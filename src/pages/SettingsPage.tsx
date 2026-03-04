@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { ClinicLayout } from "@/components/ClinicLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { mockProfessionals } from "@/data/mockData";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Edit2, Building2 } from "lucide-react";
+import { Plus, Edit2, Building2, Upload } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -16,20 +16,91 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { useClinic } from "@/contexts/ClinicContext";
+import { toast } from "sonner";
 
 export default function SettingsPage() {
   const [showProfForm, setShowProfForm] = useState(false);
+  const { clinic, setClinic } = useClinic();
+  const [clinicName, setClinicName] = useState(clinic.name);
+  const [clinicCnpj, setClinicCnpj] = useState("12.345.678/0001-90");
+  const [clinicPhone, setClinicPhone] = useState("(11) 3456-7890");
+  const [clinicEmail, setClinicEmail] = useState("contato@odontosaas.com");
+  const [clinicAddress, setClinicAddress] = useState("Av. Paulista, 1000, Sala 501 - São Paulo/SP");
+  const [logoPreview, setLogoPreview] = useState<string | null>(clinic.logoUrl);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setLogoPreview(url);
+    }
+  };
+
+  const handleSaveClinic = () => {
+    setClinic({ name: clinicName, logoUrl: logoPreview });
+    toast.success("Dados da clínica salvos com sucesso! As alterações já estão visíveis no menu lateral.");
+  };
 
   return (
     <ClinicLayout title="Configurações" subtitle="Gerenciar sistema">
       <div className="space-y-6 animate-fade-in">
-        <Tabs defaultValue="professionals">
+        <Tabs defaultValue="clinic">
           <TabsList>
-            <TabsTrigger value="professionals">Profissionais</TabsTrigger>
             <TabsTrigger value="clinic">Dados da Clínica</TabsTrigger>
+            <TabsTrigger value="professionals">Profissionais</TabsTrigger>
             <TabsTrigger value="categories">Categorias</TabsTrigger>
             <TabsTrigger value="schedule">Horários</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="clinic">
+            <Card className="p-6 max-w-xl">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="h-14 w-14 rounded-xl bg-primary/10 flex items-center justify-center overflow-hidden cursor-pointer" onClick={() => fileRef.current?.click()}>
+                  {logoPreview ? (
+                    <img src={logoPreview} alt="Logo" className="h-full w-full object-cover" />
+                  ) : (
+                    <Building2 className="h-7 w-7 text-primary" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-sm font-semibold">Dados da Clínica</h3>
+                  <p className="text-xs text-muted-foreground">Informações exibidas nos documentos e no sistema</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
+                  <Upload className="h-3.5 w-3.5 mr-1" />
+                  Logo
+                </Button>
+                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <Label>Nome da Clínica</Label>
+                  <Input value={clinicName} onChange={(e) => setClinicName(e.target.value)} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>CNPJ</Label>
+                    <Input value={clinicCnpj} onChange={(e) => setClinicCnpj(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label>Telefone</Label>
+                    <Input value={clinicPhone} onChange={(e) => setClinicPhone(e.target.value)} />
+                  </div>
+                </div>
+                <div>
+                  <Label>Email</Label>
+                  <Input value={clinicEmail} onChange={(e) => setClinicEmail(e.target.value)} />
+                </div>
+                <div>
+                  <Label>Endereço</Label>
+                  <Textarea value={clinicAddress} onChange={(e) => setClinicAddress(e.target.value)} rows={2} />
+                </div>
+                <Button onClick={handleSaveClinic} className="w-full">Salvar Alterações</Button>
+              </div>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="professionals">
             <Card className="overflow-hidden">
@@ -50,7 +121,7 @@ export default function SettingsPage() {
                     </div>
                     <div className="flex justify-end gap-2 mt-4">
                       <Button variant="outline" onClick={() => setShowProfForm(false)}>Cancelar</Button>
-                      <Button onClick={() => setShowProfForm(false)}>Salvar</Button>
+                      <Button onClick={() => { setShowProfForm(false); toast.success("Profissional cadastrado com sucesso"); }}>Salvar</Button>
                     </div>
                   </DialogContent>
                 </Dialog>
@@ -84,29 +155,6 @@ export default function SettingsPage() {
                     ))}
                   </tbody>
                 </table>
-              </div>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="clinic">
-            <Card className="p-6 max-w-xl">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Building2 className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold">Dados da Clínica</h3>
-                  <p className="text-xs text-muted-foreground">Informações exibidas nos documentos</p>
-                </div>
-              </div>
-              <div className="space-y-4">
-                <div><Label>Nome da Clínica</Label><Input defaultValue="OdontoSaaS Clínica" /></div>
-                <div><Label>CNPJ</Label><Input defaultValue="12.345.678/0001-90" /></div>
-                <div><Label>Telefone</Label><Input defaultValue="(11) 3456-7890" /></div>
-                <div><Label>Email</Label><Input defaultValue="contato@odontosaas.com" /></div>
-                <div><Label>Endereço</Label><Textarea defaultValue="Av. Paulista, 1000, Sala 501 - São Paulo/SP" rows={2} /></div>
-                <div><Label>Logo</Label><Input type="file" accept="image/*" /></div>
-                <Button>Salvar Alterações</Button>
               </div>
             </Card>
           </TabsContent>
@@ -147,7 +195,7 @@ export default function SettingsPage() {
                   </div>
                 ))}
               </div>
-              <Button className="mt-4">Salvar Horários</Button>
+              <Button className="mt-4" onClick={() => toast.success("Horários salvos com sucesso")}>Salvar Horários</Button>
             </Card>
           </TabsContent>
         </Tabs>

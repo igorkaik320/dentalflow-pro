@@ -6,9 +6,11 @@ import {
   DollarSign,
   Settings,
   Activity,
+  Stethoscope,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
+import { useClinic } from "@/contexts/ClinicContext";
 import {
   Sidebar,
   SidebarContent,
@@ -28,6 +30,7 @@ const mainItems = [
   { title: "Agenda", url: "/agenda", icon: Calendar },
   { title: "Pacientes", url: "/pacientes", icon: Users },
   { title: "Prontuário", url: "/prontuario", icon: FileText },
+  { title: "Procedimentos", url: "/procedimentos", icon: Stethoscope },
 ];
 
 const financeItems = [
@@ -42,19 +45,24 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+  const { clinic } = useClinic();
   const isActive = (path: string) =>
     path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="border-b border-sidebar-border px-4 py-3">
-        <div className="flex items-center gap-2.5">
+      <SidebarHeader className="border-b border-sidebar-border px-3 py-3">
+        <div className="flex items-center gap-2.5 overflow-hidden">
           <div className="h-8 w-8 rounded-lg bg-sidebar-primary flex items-center justify-center shrink-0">
-            <Activity className="h-4 w-4 text-sidebar-primary-foreground" />
+            {clinic.logoUrl ? (
+              <img src={clinic.logoUrl} alt="Logo" className="h-6 w-6 rounded object-cover" />
+            ) : (
+              <Activity className="h-4 w-4 text-sidebar-primary-foreground" />
+            )}
           </div>
           {!collapsed && (
-            <div className="leading-tight">
-              <p className="text-sm font-bold text-sidebar-accent-foreground">OdontoSaaS</p>
+            <div className="leading-tight min-w-0">
+              <p className="text-sm font-bold text-sidebar-accent-foreground truncate">{clinic.name}</p>
               <p className="text-[10px] text-sidebar-muted">Gestão Odontológica</p>
             </div>
           )}
@@ -123,7 +131,7 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border p-3">
         {!collapsed && (
-          <p className="text-[10px] text-sidebar-muted text-center">© 2026 OdontoSaaS v1.0</p>
+          <p className="text-[10px] text-sidebar-muted text-center">© 2026 {clinic.name} v1.0</p>
         )}
       </SidebarFooter>
     </Sidebar>
