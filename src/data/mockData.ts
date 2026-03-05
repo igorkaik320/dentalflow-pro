@@ -31,6 +31,22 @@ export interface Procedure {
   averageDuration: number;
 }
 
+export interface Supplier {
+  id: string;
+  name: string;
+  cnpj: string;
+  phone: string;
+  email: string;
+  category: string;
+  notes: string;
+}
+
+export interface FinancialCategory {
+  id: string;
+  name: string;
+  type: 'income' | 'expense';
+}
+
 export interface Appointment {
   id: string;
   patientId: string;
@@ -103,6 +119,24 @@ export const mockProcedures: Procedure[] = [
   { id: '12', name: 'Clareamento Dental', defaultPrice: 1200, averageDuration: 60 },
   { id: '13', name: 'Faceta de Porcelana', defaultPrice: 2500, averageDuration: 60 },
   { id: '14', name: 'Coroa de Porcelana', defaultPrice: 2000, averageDuration: 60 },
+];
+
+export const mockSuppliers: Supplier[] = [
+  { id: '1', name: 'Dental Supply Co.', cnpj: '12.345.678/0001-01', phone: '(11) 3333-0001', email: 'contato@dentalsupply.com', category: 'Material', notes: 'Principal fornecedor de materiais de implante' },
+  { id: '2', name: 'Laboratório ProDent', cnpj: '12.345.678/0001-02', phone: '(11) 3333-0002', email: 'lab@prodent.com', category: 'Laboratório', notes: 'Próteses e coroas' },
+  { id: '3', name: 'OrthoTech', cnpj: '12.345.678/0001-03', phone: '(11) 3333-0003', email: 'vendas@orthotech.com', category: 'Material', notes: 'Materiais ortodônticos' },
+  { id: '4', name: 'MedClean Esterilização', cnpj: '12.345.678/0001-04', phone: '(11) 3333-0004', email: 'contato@medclean.com', category: 'Serviço', notes: 'Serviço de esterilização terceirizado' },
+];
+
+export const mockFinancialCategories: FinancialCategory[] = [
+  { id: '1', name: 'Material', type: 'expense' },
+  { id: '2', name: 'Fixo', type: 'expense' },
+  { id: '3', name: 'Utilidades', type: 'expense' },
+  { id: '4', name: 'Laboratório', type: 'expense' },
+  { id: '5', name: 'Marketing', type: 'expense' },
+  { id: '6', name: 'Outros', type: 'expense' },
+  { id: '7', name: 'Consulta', type: 'income' },
+  { id: '8', name: 'Procedimento', type: 'income' },
 ];
 
 export const mockProfessionals: Professional[] = [

@@ -5,12 +5,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ClinicProvider } from "@/contexts/ClinicContext";
 import DashboardPage from "./pages/DashboardPage";
-import PatientsPage from "./pages/PatientsPage";
 import AgendaPage from "./pages/AgendaPage";
 import ClinicalRecordsPage from "./pages/ClinicalRecordsPage";
 import FinancialPage from "./pages/FinancialPage";
 import SettingsPage from "./pages/SettingsPage";
-import ProceduresPage from "./pages/ProceduresPage";
+import RegistrationsPage from "./pages/RegistrationsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,11 +24,10 @@ const App = () => (
           <Routes>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/agenda" element={<AgendaPage />} />
-            <Route path="/pacientes" element={<PatientsPage />} />
+            <Route path="/cadastros" element={<RegistrationsPage />} />
             <Route path="/prontuario" element={<ClinicalRecordsPage />} />
             <Route path="/financeiro" element={<FinancialPage />} />
             <Route path="/configuracoes" element={<SettingsPage />} />
-            <Route path="/procedimentos" element={<ProceduresPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
