@@ -1,12 +1,11 @@
 import {
   LayoutDashboard,
   Calendar,
-  Users,
   FileText,
   DollarSign,
   Settings,
   Activity,
-  Stethoscope,
+  ClipboardList,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -28,9 +27,8 @@ import {
 const mainItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Agenda", url: "/agenda", icon: Calendar },
-  { title: "Pacientes", url: "/pacientes", icon: Users },
+  { title: "Cadastros", url: "/cadastros", icon: ClipboardList },
   { title: "Prontuário", url: "/prontuario", icon: FileText },
-  { title: "Procedimentos", url: "/procedimentos", icon: Stethoscope },
 ];
 
 const financeItems = [

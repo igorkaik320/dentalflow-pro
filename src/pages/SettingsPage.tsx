@@ -50,7 +50,6 @@ export default function SettingsPage() {
           <TabsList>
             <TabsTrigger value="clinic">Dados da Clínica</TabsTrigger>
             <TabsTrigger value="professionals">Profissionais</TabsTrigger>
-            <TabsTrigger value="categories">Categorias</TabsTrigger>
             <TabsTrigger value="schedule">Horários</TabsTrigger>
           </TabsList>
 
@@ -159,22 +158,8 @@ export default function SettingsPage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="categories">
-            <Card className="p-5 max-w-md">
-              <h3 className="text-sm font-semibold mb-4">Categorias Financeiras</h3>
-              <div className="space-y-2">
-                {["Material", "Fixo", "Utilidades", "Laboratório", "Marketing", "Outros"].map((cat) => (
-                  <div key={cat} className="flex items-center justify-between p-2.5 rounded bg-secondary/50">
-                    <span className="text-sm text-foreground">{cat}</span>
-                    <Button variant="ghost" size="sm"><Edit2 className="h-3 w-3" /></Button>
-                  </div>
-                ))}
-              </div>
-              <Button variant="outline" size="sm" className="mt-3 w-full">
-                <Plus className="h-3.5 w-3.5 mr-1" />Adicionar Categoria
-              </Button>
-            </Card>
-          </TabsContent>
+
+
 
           <TabsContent value="schedule">
             <Card className="p-5 max-w-md">
