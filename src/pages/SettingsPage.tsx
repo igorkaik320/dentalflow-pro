@@ -50,7 +50,6 @@ export default function SettingsPage() {
           <TabsList>
             <TabsTrigger value="clinic">Dados da Clínica</TabsTrigger>
             <TabsTrigger value="professionals">Profissionais</TabsTrigger>
-            <TabsTrigger value="categories">Categorias</TabsTrigger>
             <TabsTrigger value="schedule">Horários</TabsTrigger>
           </TabsList>
 
