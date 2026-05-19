@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ClinicProvider } from "@/contexts/ClinicContext";
+import { AuthGate } from "@/components/AuthGate";
 import DashboardPage from "./pages/DashboardPage";
 import AgendaPage from "./pages/AgendaPage";
 import ClinicalRecordsPage from "./pages/ClinicalRecordsPage";
@@ -21,15 +22,18 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<DashboardPage />} />
-            <Route path="/agenda" element={<AgendaPage />} />
-            <Route path="/cadastros" element={<RegistrationsPage />} />
-            <Route path="/prontuario" element={<ClinicalRecordsPage />} />
-            <Route path="/financeiro" element={<FinancialPage />} />
-            <Route path="/configuracoes" element={<SettingsPage />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <AuthGate>
+            <Routes>
+              <Route path="/" element={<DashboardPage />} />
+              <Route path="/login" element={<DashboardPage />} />
+              <Route path="/agenda" element={<AgendaPage />} />
+              <Route path="/cadastros" element={<RegistrationsPage />} />
+              <Route path="/prontuario" element={<ClinicalRecordsPage />} />
+              <Route path="/financeiro" element={<FinancialPage />} />
+              <Route path="/configuracoes" element={<SettingsPage />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AuthGate>
         </BrowserRouter>
       </ClinicProvider>
     </TooltipProvider>
