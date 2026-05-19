@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ClinicLayout } from "@/components/ClinicLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -290,10 +290,10 @@ export default function RegistrationsPage() {
   );
 }
 
-function TableSection({ count, actionLabel, onAction, children }: { count: string; actionLabel: string; onAction: () => void; children: React.ReactNode }) {
+function TableSection({ count, actionLabel, onAction, children }: { count: string; actionLabel: string; onAction: () => void; children: ReactNode }) {
   return <div className="space-y-4"><div className="flex justify-between items-center"><p className="text-sm text-muted-foreground">{count}</p><Button onClick={onAction}><Plus className="h-4 w-4 mr-1.5" />{actionLabel}</Button></div><Card className="overflow-hidden"><div className="overflow-x-auto"><table className="w-full">{children}</table></div></Card></div>;
 }
 
-function Info({ label, value, icon, wide }: { label: string; value: string; icon?: React.ReactNode; wide?: boolean }) {
+function Info({ label, value, icon, wide }: { label: string; value: string; icon?: ReactNode; wide?: boolean }) {
   return <div className={`space-y-1 ${wide ? "col-span-2" : ""}`}><span className="text-muted-foreground text-xs">{label}</span><p className="font-medium flex items-center gap-1">{icon}{value || "-"}</p></div>;
 }
