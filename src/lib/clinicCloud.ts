@@ -1,7 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import {
   mockAppointments,
-  mockClinicalRecords,
   mockFinancialCategories,
   mockPatients,
   mockPayables,
@@ -82,11 +81,17 @@ async function seedClinicDefaults(clinicId: string) {
   await db.from("suppliers").insert(mockSuppliers.map((s) => ({
     clinic_id: clinicId,
     name: s.name,
+    legal_name: s.legalName,
     cnpj: s.cnpj,
+    document: s.document || s.cnpj,
     phone: s.phone,
+    mobile: s.mobile,
     email: s.email,
     category: s.category,
     notes: s.notes,
+    bank: s.bank,
+    agency: s.agency,
+    account: s.account,
   })));
 
   await db.from("financial_categories").insert(mockFinancialCategories.map((c) => ({
@@ -113,21 +118,6 @@ async function seedClinicDefaults(clinicId: string) {
     value: a.value || 0,
     status: a.status,
     notes: a.notes,
-  })));
-
-  await db.from("clinical_records").insert(mockClinicalRecords.map((record) => ({
-    clinic_id: clinicId,
-    patient_id: patientMap.get(record.patientId) || null,
-    professional_id: professionalMap.get(record.professionalId) || null,
-    patient_name: record.patientName,
-    professional_name: record.professionalName,
-    record_date: record.date,
-    complaint: record.complaint,
-    diagnosis: record.diagnosis,
-    procedure_performed: record.procedurePerformed,
-    prescription: record.prescription,
-    observations: record.observations,
-    attachments: record.attachments,
   })));
 
   await db.from("receivables").insert(mockReceivables.map((r) => ({
@@ -186,10 +176,10 @@ export async function ensureClinicForUser(user: { id: string; email?: string | n
   const { data: clinic, error: clinicError } = await db
     .from("clinics")
     .insert({
-      name: "OdontoSaaS",
+      name: "EsteticaPro",
       cnpj: "12.345.678/0001-90",
       phone: "(11) 3456-7890",
-      email: "contato@odontosaas.com",
+      email: "contato@esteticapro.com",
       address: "Av. Paulista, 1000, Sala 501 - São Paulo/SP",
       created_by: user.id,
     })
@@ -214,13 +204,4 @@ export async function uploadClinicLogo(userId: string, file: File) {
   if (error) throw error;
   const { data } = supabase.storage.from("clinic-logos").getPublicUrl(path);
   return data.publicUrl;
-}
-
-export async function uploadClinicalAttachment(clinicId: string, file: File) {
-  const safeName = file.name.replace(/[^\w.\-]+/g, "_");
-  const path = `${clinicId}/${crypto.randomUUID()}-${safeName}`;
-  const { error } = await supabase.storage.from("clinical-attachments").upload(path, file, { upsert: false });
-  if (error) throw error;
-  const { data } = supabase.storage.from("clinical-attachments").getPublicUrl(path);
-  return { name: file.name, url: data.publicUrl };
 }

@@ -129,7 +129,7 @@ export default function SettingsPage() {
     setProfessionalForm(professional ? {
       name: professional.name,
       specialty: professional.specialty,
-      commissionRate: professional.commissionRate,
+      commissionRate: 0,
       phone: professional.phone,
       email: professional.email,
       active: professional.active,
@@ -145,7 +145,7 @@ export default function SettingsPage() {
       clinic_id: clinic.id,
       name: professionalForm.name.trim(),
       specialty: professionalForm.specialty,
-      commission_rate: Number(professionalForm.commissionRate || 0),
+      commission_rate: 0,
       phone: professionalForm.phone,
       email: professionalForm.email,
       active: professionalForm.active,
@@ -219,8 +219,7 @@ export default function SettingsPage() {
                     <DialogHeader><DialogTitle>{editingProfessional ? "Editar Profissional" : "Novo Profissional"}</DialogTitle></DialogHeader>
                     <div className="grid grid-cols-2 gap-3 mt-2">
                       <div className="col-span-2"><Label>Nome</Label><Input value={professionalForm.name} onChange={(e) => setProfessionalForm({ ...professionalForm, name: e.target.value })} /></div>
-                      <div><Label>Especialidade</Label><Input value={professionalForm.specialty} onChange={(e) => setProfessionalForm({ ...professionalForm, specialty: e.target.value })} /></div>
-                      <div><Label>Comissão (%)</Label><Input type="number" value={professionalForm.commissionRate} onChange={(e) => setProfessionalForm({ ...professionalForm, commissionRate: Number(e.target.value) })} /></div>
+                      <div className="col-span-2"><Label>Especialidade</Label><Input value={professionalForm.specialty} onChange={(e) => setProfessionalForm({ ...professionalForm, specialty: e.target.value })} /></div>
                       <div><Label>Telefone</Label><Input value={professionalForm.phone} onChange={(e) => setProfessionalForm({ ...professionalForm, phone: e.target.value })} /></div>
                       <div><Label>Email</Label><Input value={professionalForm.email} onChange={(e) => setProfessionalForm({ ...professionalForm, email: e.target.value })} /></div>
                     </div>
@@ -233,8 +232,8 @@ export default function SettingsPage() {
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead><tr className="border-b border-border bg-muted/50"><th className="text-left text-xs font-medium text-muted-foreground p-3">Nome</th><th className="text-left text-xs font-medium text-muted-foreground p-3">Especialidade</th><th className="text-center text-xs font-medium text-muted-foreground p-3">Comissão</th><th className="text-left text-xs font-medium text-muted-foreground p-3 hidden md:table-cell">Contato</th><th className="text-center text-xs font-medium text-muted-foreground p-3">Ativo</th><th className="text-right text-xs font-medium text-muted-foreground p-3">Ações</th></tr></thead>
-                  <tbody>{professionals.map((p) => <tr key={p.id} className="border-b border-border/50 hover:bg-muted/30"><td className="p-3 text-sm font-medium text-foreground">{p.name}</td><td className="p-3 text-sm text-muted-foreground">{p.specialty}</td><td className="p-3 text-sm text-center font-semibold text-primary">{p.commissionRate}%</td><td className="p-3 text-sm text-muted-foreground hidden md:table-cell">{p.phone}</td><td className="p-3 text-center"><Switch checked={p.active} onCheckedChange={(active) => toggleProfessional(p, active)} /></td><td className="p-3 text-right"><Button variant="ghost" size="sm" onClick={() => openProfessional(p)}><Edit2 className="h-3.5 w-3.5" /></Button></td></tr>)}</tbody>
+                  <thead><tr className="border-b border-border bg-muted/50"><th className="text-left text-xs font-medium text-muted-foreground p-3">Nome</th><th className="text-left text-xs font-medium text-muted-foreground p-3">Especialidade</th><th className="text-left text-xs font-medium text-muted-foreground p-3 hidden md:table-cell">Contato</th><th className="text-center text-xs font-medium text-muted-foreground p-3">Ativo</th><th className="text-right text-xs font-medium text-muted-foreground p-3">Ações</th></tr></thead>
+                  <tbody>{professionals.map((p) => <tr key={p.id} className="border-b border-border/50 hover:bg-muted/30"><td className="p-3 text-sm font-medium text-foreground">{p.name}</td><td className="p-3 text-sm text-muted-foreground">{p.specialty}</td><td className="p-3 text-sm text-muted-foreground hidden md:table-cell">{p.phone}</td><td className="p-3 text-center"><Switch checked={p.active} onCheckedChange={(active) => toggleProfessional(p, active)} /></td><td className="p-3 text-right"><Button variant="ghost" size="sm" onClick={() => openProfessional(p)}><Edit2 className="h-3.5 w-3.5" /></Button></td></tr>)}</tbody>
                 </table>
               </div>
             </Card>

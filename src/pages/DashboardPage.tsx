@@ -38,6 +38,16 @@ type PayableRow = {
   status: string;
   due_date: string;
   paid_date: string | null;
+  payable_installments?: PayableInstallmentRow[];
+};
+
+type PayableInstallmentRow = {
+  id: string;
+  amount: number;
+  paid_amount: number | null;
+  status: string;
+  due_date: string;
+  paid_date: string | null;
 };
 
 type PatientRow = {
@@ -54,13 +64,6 @@ type AppointmentRow = {
   appointment_time: string;
   duration: number;
   status: string;
-};
-
-type ProfessionalRow = {
-  id: string;
-  name: string;
-  commission_rate: number;
-  active: boolean;
 };
 
 const statusColors: Record<string, string> = {
@@ -103,13 +106,31 @@ function lastSixMonthKeys() {
   });
 }
 
+function payableExpenseRows(payables: PayableRow[]) {
+  return payables.flatMap((payable) => {
+    if (payable.payable_installments?.length) {
+      return payable.payable_installments.map((installment) => ({
+        amount: installment.status === "paid" ? (installment.paid_amount ?? installment.amount) : installment.amount,
+        status: installment.status,
+        due_date: installment.due_date,
+        paid_date: installment.paid_date,
+      }));
+    }
+    return [{
+      amount: payable.amount,
+      status: payable.status,
+      due_date: payable.due_date,
+      paid_date: payable.paid_date,
+    }];
+  });
+}
+
 export default function DashboardPage() {
   const { clinic } = useClinic();
   const [receivables, setReceivables] = useState<ReceivableRow[]>([]);
   const [payables, setPayables] = useState<PayableRow[]>([]);
   const [patients, setPatients] = useState<PatientRow[]>([]);
   const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
-  const [professionals, setProfessionals] = useState<ProfessionalRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -123,23 +144,29 @@ export default function DashboardPage() {
   const loadDashboard = async () => {
     if (!clinic.id) return;
     setLoading(true);
-    const [receivableRes, payableRes, patientRes, appointmentRes, professionalRes] = await Promise.all([
+    const [receivableRes, payableRes, patientRes, appointmentRes] = await Promise.all([
       db.from("receivables").select("id, amount, status, due_date, paid_date, professional_name").eq("clinic_id", clinic.id),
-      db.from("payables").select("id, amount, status, due_date, paid_date").eq("clinic_id", clinic.id),
+      db.from("payables").select("id, amount, status, due_date, paid_date, payable_installments(id, amount, paid_amount, status, due_date, paid_date)").eq("clinic_id", clinic.id),
       db.from("patients").select("id, created_at").eq("clinic_id", clinic.id),
       db.from("appointments").select("id, patient_name, professional_name, procedure_name, appointment_date, appointment_time, duration, status").eq("clinic_id", clinic.id).eq("appointment_date", today()).order("appointment_time"),
-      db.from("professionals").select("id, name, commission_rate, active").eq("clinic_id", clinic.id),
     ]);
     setLoading(false);
 
-    const error = receivableRes.error || payableRes.error || patientRes.error || appointmentRes.error || professionalRes.error;
+    const error = receivableRes.error || payableRes.error || patientRes.error || appointmentRes.error;
     if (error) return toast.error("Não foi possível carregar o dashboard.");
 
     setReceivables((receivableRes.data || []).map((row: any) => ({ ...row, amount: Number(row.amount || 0) })));
-    setPayables((payableRes.data || []).map((row: any) => ({ ...row, amount: Number(row.amount || 0) })));
+    setPayables((payableRes.data || []).map((row: any) => ({
+      ...row,
+      amount: Number(row.amount || 0),
+      payable_installments: (row.payable_installments || []).map((item: any) => ({
+        ...item,
+        amount: Number(item.amount || 0),
+        paid_amount: item.paid_amount == null ? null : Number(item.paid_amount),
+      })),
+    })));
     setPatients(patientRes.data || []);
     setAppointments(appointmentRes.data || []);
-    setProfessionals((professionalRes.data || []).map((row: any) => ({ ...row, commission_rate: Number(row.commission_rate || 0) })));
   };
 
   const currentMonth = today().slice(0, 7);
@@ -154,32 +181,25 @@ export default function DashboardPage() {
   }, [receivables, patients, currentMonth]);
 
   const monthlyData = useMemo(() => {
+    const expenseRows = payableExpenseRows(payables);
     return lastSixMonthKeys().map((key) => ({
       month: monthLabel(key),
       revenue: receivables
         .filter((item) => monthKey(item.paid_date || item.due_date) === key)
         .reduce((sum, item) => sum + item.amount, 0),
-      expenses: payables
+      expenses: expenseRows
         .filter((item) => monthKey(item.paid_date || item.due_date) === key)
         .reduce((sum, item) => sum + item.amount, 0),
     }));
   }, [receivables, payables]);
 
-  const commissions = useMemo(() => {
-    return professionals
-      .filter((professional) => professional.active)
-      .map((professional) => {
-        const totalBilled = receivables
-          .filter((item) => item.status === "paid" && item.professional_name === professional.name)
-          .reduce((sum, item) => sum + item.amount, 0);
-        return {
-          professional: professional.name,
-          rate: professional.commission_rate,
-          total: totalBilled * (professional.commission_rate / 100),
-        };
-      })
-      .filter((item) => item.total > 0);
-  }, [professionals, receivables]);
+  const financialSummary = useMemo(() => {
+    const expenseRows = payableExpenseRows(payables);
+    const paidExpenses = expenseRows.filter((item) => item.status === "paid").reduce((sum, item) => sum + item.amount, 0);
+    const openExpenses = expenseRows.filter((item) => item.status !== "paid").reduce((sum, item) => sum + item.amount, 0);
+    const balance = metrics.totalReceived - paidExpenses;
+    return { paidExpenses, openExpenses, balance };
+  }, [payables, metrics.totalReceived]);
 
   const stats = [
     { label: "Faturamento Mensal", value: formatCurrency(metrics.monthlyRevenue), icon: DollarSign, trend: "Atual", up: true },
@@ -228,23 +248,19 @@ export default function DashboardPage() {
           </Card>
 
           <Card className="p-5">
-            <h3 className="text-sm font-semibold text-foreground mb-4">Comissões do Mês</h3>
+            <h3 className="text-sm font-semibold text-foreground mb-4">Resumo Financeiro</h3>
             <div className="space-y-4">
-              {commissions.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma comissão paga no período.</p>}
-              {commissions.map((c) => (
-                <div key={c.professional} className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{c.professional}</p>
-                    <p className="text-xs text-muted-foreground">{c.rate}% de comissão</p>
-                  </div>
-                  <p className="text-sm font-semibold text-primary">{formatCurrency(c.total)}</p>
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 pt-4 border-t border-border">
-              <div className="flex justify-between">
-                <span className="text-sm font-medium text-foreground">Total</span>
-                <span className="text-sm font-bold text-primary">{formatCurrency(commissions.reduce((a, b) => a + b.total, 0))}</span>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Despesas pagas</span>
+                <span className="text-sm font-semibold text-foreground">{formatCurrency(financialSummary.paidExpenses)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Despesas em aberto</span>
+                <span className="text-sm font-semibold text-foreground">{formatCurrency(financialSummary.openExpenses)}</span>
+              </div>
+              <div className="pt-4 border-t border-border flex items-center justify-between">
+                <span className="text-sm font-medium text-foreground">Saldo recebido</span>
+                <span className="text-sm font-bold text-primary">{formatCurrency(financialSummary.balance)}</span>
               </div>
             </div>
           </Card>

@@ -25,10 +25,10 @@ type ClinicContextType = {
 
 const fallbackClinic: ClinicInfo = {
   id: null,
-  name: "OdontoSaaS",
+  name: "EsteticaPro",
   cnpj: "12.345.678/0001-90",
   phone: "(11) 3456-7890",
-  email: "contato@odontosaas.com",
+  email: "contato@esteticapro.com",
   address: "Av. Paulista, 1000, Sala 501 - São Paulo/SP",
   logoUrl: null,
 };

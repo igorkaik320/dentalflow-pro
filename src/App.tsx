@@ -7,7 +7,6 @@ import { ClinicProvider } from "@/contexts/ClinicContext";
 import { AuthGate } from "@/components/AuthGate";
 import DashboardPage from "./pages/DashboardPage";
 import AgendaPage from "./pages/AgendaPage";
-import ClinicalRecordsPage from "./pages/ClinicalRecordsPage";
 import FinancialPage from "./pages/FinancialPage";
 import SettingsPage from "./pages/SettingsPage";
 import RegistrationsPage from "./pages/RegistrationsPage";
@@ -28,7 +27,6 @@ const App = () => (
               <Route path="/login" element={<DashboardPage />} />
               <Route path="/agenda" element={<AgendaPage />} />
               <Route path="/cadastros" element={<RegistrationsPage />} />
-              <Route path="/prontuario" element={<ClinicalRecordsPage />} />
               <Route path="/financeiro" element={<FinancialPage />} />
               <Route path="/configuracoes" element={<SettingsPage />} />
               <Route path="*" element={<NotFound />} />

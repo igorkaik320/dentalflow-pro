@@ -26,6 +26,11 @@ export function formatCNPJ(value: string) {
     .replace(/^(\d{2})\.(\d{3})\.(\d{3})\/(\d{4})(\d)/, "$1.$2.$3/$4-$5");
 }
 
+export function formatDocument(value: string) {
+  const digits = onlyDigits(value);
+  return digits.length <= 11 ? formatCPF(digits) : formatCNPJ(digits);
+}
+
 export function formatCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value || 0);
 }

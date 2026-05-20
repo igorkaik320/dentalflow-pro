@@ -1,7 +1,6 @@
 import {
   LayoutDashboard,
   Calendar,
-  FileText,
   DollarSign,
   Settings,
   Activity,
@@ -28,7 +27,6 @@ const mainItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Agenda", url: "/agenda", icon: Calendar },
   { title: "Cadastros", url: "/cadastros", icon: ClipboardList },
-  { title: "Prontuário", url: "/prontuario", icon: FileText },
 ];
 
 const financeItems = [
@@ -61,7 +59,7 @@ export function AppSidebar() {
           {!collapsed && (
             <div className="leading-tight min-w-0">
               <p className="text-sm font-bold text-sidebar-accent-foreground truncate">{clinic.name}</p>
-              <p className="text-[10px] text-sidebar-muted">Gestão Odontológica</p>
+              <p className="text-[10px] text-sidebar-muted">Gestão Estética</p>
             </div>
           )}
         </div>

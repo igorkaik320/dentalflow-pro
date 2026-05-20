@@ -77,7 +77,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
             <Activity className="h-5 w-5 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-foreground">OdontoSaaS</h1>
+            <h1 className="text-xl font-bold text-foreground">EsteticaPro</h1>
             <p className="text-sm text-muted-foreground">Acesse sua clínica para continuar</p>
           </div>
         </div>
