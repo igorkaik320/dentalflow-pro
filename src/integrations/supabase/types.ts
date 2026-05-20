@@ -141,6 +141,56 @@ export type Database = {
           },
         ]
       }
+      cash_sessions: {
+        Row: {
+          clinic_id: string
+          closed_at: string | null
+          closed_by: string | null
+          closing_balance: number | null
+          created_at: string
+          id: string
+          notes: string | null
+          opened_at: string
+          opened_by: string | null
+          opening_balance: number
+          updated_at: string
+        }
+        Insert: {
+          clinic_id: string
+          closed_at?: string | null
+          closed_by?: string | null
+          closing_balance?: number | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          opened_by?: string | null
+          opening_balance?: number
+          updated_at?: string
+        }
+        Update: {
+          clinic_id?: string
+          closed_at?: string | null
+          closed_by?: string | null
+          closing_balance?: number | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          opened_by?: string | null
+          opening_balance?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_sessions_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinic_members: {
         Row: {
           active: boolean
@@ -172,6 +222,82 @@ export type Database = {
             columns: ["clinic_id"]
             isOneToOne: false
             referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clinical_records: {
+        Row: {
+          attachments: string[]
+          clinic_id: string
+          complaint: string | null
+          created_at: string
+          diagnosis: string | null
+          id: string
+          observations: string | null
+          patient_id: string | null
+          patient_name: string
+          prescription: string | null
+          procedure_performed: string | null
+          professional_id: string | null
+          professional_name: string | null
+          record_date: string
+          updated_at: string
+        }
+        Insert: {
+          attachments?: string[]
+          clinic_id: string
+          complaint?: string | null
+          created_at?: string
+          diagnosis?: string | null
+          id?: string
+          observations?: string | null
+          patient_id?: string | null
+          patient_name: string
+          prescription?: string | null
+          procedure_performed?: string | null
+          professional_id?: string | null
+          professional_name?: string | null
+          record_date?: string
+          updated_at?: string
+        }
+        Update: {
+          attachments?: string[]
+          clinic_id?: string
+          complaint?: string | null
+          created_at?: string
+          diagnosis?: string | null
+          id?: string
+          observations?: string | null
+          patient_id?: string | null
+          patient_name?: string
+          prescription?: string | null
+          procedure_performed?: string | null
+          professional_id?: string | null
+          professional_name?: string | null
+          record_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinical_records_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinical_records_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinical_records_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
             referencedColumns: ["id"]
           },
         ]
@@ -306,16 +432,86 @@ export type Database = {
           },
         ]
       }
+      payable_installments: {
+        Row: {
+          amount: number
+          clinic_id: string
+          created_at: string
+          due_date: string
+          external_id: string | null
+          id: string
+          installment_number: number
+          notes: string | null
+          paid_amount: number | null
+          paid_date: string | null
+          payable_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          clinic_id: string
+          created_at?: string
+          due_date: string
+          external_id?: string | null
+          id?: string
+          installment_number?: number
+          notes?: string | null
+          paid_amount?: number | null
+          paid_date?: string | null
+          payable_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          clinic_id?: string
+          created_at?: string
+          due_date?: string
+          external_id?: string | null
+          id?: string
+          installment_number?: number
+          notes?: string | null
+          paid_amount?: number | null
+          paid_date?: string | null
+          payable_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payable_installments_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payable_installments_payable_id_fkey"
+            columns: ["payable_id"]
+            isOneToOne: false
+            referencedRelation: "payables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payables: {
         Row: {
           amount: number
           category: string | null
           clinic_id: string
+          company_id: string | null
+          company_name: string | null
           created_at: string
           description: string
           due_date: string
+          external_id: string | null
+          first_due_date: string | null
           id: string
+          installments_count: number
+          issue_date: string | null
           paid_date: string | null
+          source_notes: string | null
           status: string
           supplier: string
           supplier_id: string | null
@@ -325,11 +521,18 @@ export type Database = {
           amount?: number
           category?: string | null
           clinic_id: string
+          company_id?: string | null
+          company_name?: string | null
           created_at?: string
           description: string
           due_date: string
+          external_id?: string | null
+          first_due_date?: string | null
           id?: string
+          installments_count?: number
+          issue_date?: string | null
           paid_date?: string | null
+          source_notes?: string | null
           status?: string
           supplier: string
           supplier_id?: string | null
@@ -339,11 +542,18 @@ export type Database = {
           amount?: number
           category?: string | null
           clinic_id?: string
+          company_id?: string | null
+          company_name?: string | null
           created_at?: string
           description?: string
           due_date?: string
+          external_id?: string | null
+          first_due_date?: string | null
           id?: string
+          installments_count?: number
+          issue_date?: string | null
           paid_date?: string | null
+          source_notes?: string | null
           status?: string
           supplier?: string
           supplier_id?: string | null
@@ -559,36 +769,57 @@ export type Database = {
       }
       suppliers: {
         Row: {
+          account: string | null
+          agency: string | null
+          bank: string | null
           category: string | null
           clinic_id: string
           cnpj: string | null
           created_at: string
+          document: string | null
           email: string | null
+          external_id: string | null
           id: string
+          legal_name: string | null
+          mobile: string | null
           name: string
           notes: string | null
           phone: string | null
           updated_at: string
         }
         Insert: {
+          account?: string | null
+          agency?: string | null
+          bank?: string | null
           category?: string | null
           clinic_id: string
           cnpj?: string | null
           created_at?: string
+          document?: string | null
           email?: string | null
+          external_id?: string | null
           id?: string
+          legal_name?: string | null
+          mobile?: string | null
           name: string
           notes?: string | null
           phone?: string | null
           updated_at?: string
         }
         Update: {
+          account?: string | null
+          agency?: string | null
+          bank?: string | null
           category?: string | null
           clinic_id?: string
           cnpj?: string | null
           created_at?: string
+          document?: string | null
           email?: string | null
+          external_id?: string | null
           id?: string
+          legal_name?: string | null
+          mobile?: string | null
           name?: string
           notes?: string | null
           phone?: string | null
