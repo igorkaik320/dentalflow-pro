@@ -179,7 +179,7 @@ export default function SecurityPage() {
             </div>
             <div className="overflow-x-auto rounded-md border border-border">
               <table className="w-full">
-                <thead><tr className="border-b border-border bg-muted/50"><th className="text-left text-xs font-medium text-muted-foreground p-3">Usuario</th><th className="text-left text-xs font-medium text-muted-foreground p-3">Cargo/Funcao</th><th className="text-center text-xs font-medium text-muted-foreground p-3">Ativo</th></tr></thead>
+                <thead><tr className="border-b border-border bg-muted/50"><th className="text-left text-xs font-medium text-muted-foreground p-3">Usuario</th><th className="text-left text-xs font-medium text-muted-foreground p-3">Cargo/Funcao</th><th className="text-center text-xs font-medium text-muted-foreground p-3">Status</th><th className="text-center text-xs font-medium text-muted-foreground p-3">Aprovar</th></tr></thead>
                 <tbody>
                   {members.map((member) => (
                     <tr key={member.id} className="border-b border-border/50">
@@ -190,6 +190,7 @@ export default function SecurityPage() {
                           <SelectContent>{Object.entries(roleLabels).map(([role, label]) => <SelectItem key={role} value={role}>{label}</SelectItem>)}</SelectContent>
                         </Select>
                       </td>
+                      <td className="p-3 text-center"><span className={`rounded-full px-2 py-1 text-xs font-medium ${member.active ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>{member.active ? "Ativo" : "Pendente"}</span></td>
                       <td className="p-3 text-center"><Switch checked={member.active} disabled={member.userId === user?.id} onCheckedChange={(active) => updateMember(member, { active })} /></td>
                     </tr>
                   ))}

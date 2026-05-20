@@ -20,6 +20,7 @@ type ClinicContextType = {
   session: Session | null;
   user: User | null;
   loading: boolean;
+  accessError: string | null;
   signOut: () => Promise<void>;
 };
 
@@ -51,15 +52,22 @@ export function ClinicProvider({ children }: { children: ReactNode }) {
   const [clinic, setClinicState] = useState<ClinicInfo>(fallbackClinic);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [accessError, setAccessError] = useState<string | null>(null);
 
   const loadClinic = async (currentSession: Session | null) => {
+    setAccessError(null);
     if (!currentSession?.user) {
       setClinicState(fallbackClinic);
       return;
     }
 
-    const cloudClinic = await ensureClinicForUser(currentSession.user);
-    setClinicState(mapClinic(cloudClinic));
+    try {
+      const cloudClinic = await ensureClinicForUser(currentSession.user);
+      setClinicState(mapClinic(cloudClinic));
+    } catch (error) {
+      setClinicState(fallbackClinic);
+      setAccessError((error as Error).message || "Acesso pendente de aprovacao.");
+    }
   };
 
   useEffect(() => {
@@ -104,12 +112,14 @@ export function ClinicProvider({ children }: { children: ReactNode }) {
     session,
     user: session?.user || null,
     loading,
+    accessError,
     signOut: async () => {
       await supabase.auth.signOut();
       setSession(null);
       setClinicState(fallbackClinic);
+      setAccessError(null);
     },
-  }), [clinic, session, loading]);
+  }), [clinic, session, loading, accessError]);
 
   return <ClinicContext.Provider value={value}>{children}</ClinicContext.Provider>;
 }

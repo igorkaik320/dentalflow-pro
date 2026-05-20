@@ -12,7 +12,7 @@ import { db } from "@/lib/clinicCloud";
 import { toast } from "sonner";
 
 export function AuthGate({ children }: { children: ReactNode }) {
-  const { session, loading } = useClinic();
+  const { session, loading, accessError, signOut } = useClinic();
   const location = useLocation();
   const [submitting, setSubmitting] = useState(false);
   const [passwordSetupMode, setPasswordSetupMode] = useState(() => new URLSearchParams(location.search).get("set-password") === "1");
@@ -81,7 +81,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
       return;
     }
 
-    toast.success(mode === "login" ? "Login realizado com sucesso." : "Cadastro criado. Verifique seu email para confirmar o acesso.");
+    toast.success(mode === "login" ? "Login realizado com sucesso." : "Solicitacao enviada. Aguarde um administrador aprovar seu acesso.");
   };
 
   const handleSetPassword = async (event: FormEvent<HTMLFormElement>) => {
@@ -142,6 +142,28 @@ export function AuthGate({ children }: { children: ReactNode }) {
             <div><Label>Confirmacao de senha</Label><Input name="confirmPassword" type="password" autoComplete="new-password" /></div>
             <Button type="submit" className="w-full" disabled={submitting}>{submitting ? "Salvando..." : "Cadastrar senha"}</Button>
           </form>
+        </Card>
+      </div>
+    );
+  }
+
+  if (session && accessError) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <Card className="w-full max-w-md p-6 shadow-elegant">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="h-11 w-11 rounded-lg bg-primary flex items-center justify-center">
+              <Activity className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-foreground">Acesso em analise</h1>
+              <p className="text-sm text-muted-foreground">Seu cadastro precisa ser aprovado pela clinica.</p>
+            </div>
+          </div>
+          <div className="rounded-md border border-border bg-muted/30 p-4 text-sm text-muted-foreground mb-5">
+            {accessError}
+          </div>
+          <Button variant="outline" className="w-full" onClick={signOut}>Sair</Button>
         </Card>
       </div>
     );
