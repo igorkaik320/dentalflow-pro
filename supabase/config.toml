@@ -1,1 +1,4 @@
 project_id = "pxhwxevcyrcknjcmmxrh"
+
+[functions.manage-clinic-users]
+verify_jwt = false
