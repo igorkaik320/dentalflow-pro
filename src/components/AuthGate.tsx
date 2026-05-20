@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 import { useClinic } from "@/contexts/ClinicContext";
 import { toast } from "sonner";
 
@@ -60,8 +59,11 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   const handleGoogle = async () => {
     setSubmitting(true);
-    const { error } = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: `${window.location.origin}/`,
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/`,
+      },
     });
     setSubmitting(false);
     if (error) toast.error(error.message || "Não foi possível iniciar o login com Google.");

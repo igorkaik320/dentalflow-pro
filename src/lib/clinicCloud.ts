@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import {
   mockAppointments,
+  mockClinicalRecords,
   mockFinancialCategories,
   mockPatients,
   mockPayables,
@@ -114,6 +115,21 @@ async function seedClinicDefaults(clinicId: string) {
     notes: a.notes,
   })));
 
+  await db.from("clinical_records").insert(mockClinicalRecords.map((record) => ({
+    clinic_id: clinicId,
+    patient_id: patientMap.get(record.patientId) || null,
+    professional_id: professionalMap.get(record.professionalId) || null,
+    patient_name: record.patientName,
+    professional_name: record.professionalName,
+    record_date: record.date,
+    complaint: record.complaint,
+    diagnosis: record.diagnosis,
+    procedure_performed: record.procedurePerformed,
+    prescription: record.prescription,
+    observations: record.observations,
+    attachments: record.attachments,
+  })));
+
   await db.from("receivables").insert(mockReceivables.map((r) => ({
     clinic_id: clinicId,
     patient_id: patientMap.get(r.patientId) || null,
@@ -198,4 +214,13 @@ export async function uploadClinicLogo(userId: string, file: File) {
   if (error) throw error;
   const { data } = supabase.storage.from("clinic-logos").getPublicUrl(path);
   return data.publicUrl;
+}
+
+export async function uploadClinicalAttachment(clinicId: string, file: File) {
+  const safeName = file.name.replace(/[^\w.\-]+/g, "_");
+  const path = `${clinicId}/${crypto.randomUUID()}-${safeName}`;
+  const { error } = await supabase.storage.from("clinical-attachments").upload(path, file, { upsert: false });
+  if (error) throw error;
+  const { data } = supabase.storage.from("clinical-attachments").getPublicUrl(path);
+  return { name: file.name, url: data.publicUrl };
 }
