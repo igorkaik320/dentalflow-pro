@@ -43,7 +43,7 @@ const systemItems = [
 function ClinicLogo({ logoUrl }: { logoUrl: string | null }) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   if (logoUrl && logoUrl !== failedUrl) {
-    return <img src={logoUrl} alt="Logo" className="h-6 w-6 rounded object-cover" onError={() => setFailedUrl(logoUrl)} />;
+    return <img src={logoUrl} alt="Logo" className="h-full w-full rounded object-contain p-1" onError={() => setFailedUrl(logoUrl)} />;
   }
   return <Activity className="h-4 w-4 text-sidebar-primary-foreground" />;
 }
@@ -58,8 +58,8 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="border-b border-sidebar-border px-3 py-3">
-        <div className="flex items-center gap-2.5 overflow-hidden">
+      <SidebarHeader className={`border-b border-sidebar-border py-3 ${collapsed ? "px-2" : "px-3"}`}>
+        <div className={`flex items-center gap-2.5 overflow-hidden ${collapsed ? "justify-center" : ""}`}>
           <div className="h-8 w-8 rounded-lg bg-sidebar-primary flex items-center justify-center shrink-0">
             <ClinicLogo logoUrl={clinic.logoUrl} />
           </div>
