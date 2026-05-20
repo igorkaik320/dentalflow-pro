@@ -226,6 +226,50 @@ export type Database = {
           },
         ]
       }
+      clinic_working_hours: {
+        Row: {
+          clinic_id: string
+          created_at: string
+          day_of_week: number
+          end_time: string
+          id: string
+          is_open: boolean
+          slot_minutes: number
+          start_time: string
+          updated_at: string
+        }
+        Insert: {
+          clinic_id: string
+          created_at?: string
+          day_of_week: number
+          end_time?: string
+          id?: string
+          is_open?: boolean
+          slot_minutes?: number
+          start_time?: string
+          updated_at?: string
+        }
+        Update: {
+          clinic_id?: string
+          created_at?: string
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          is_open?: boolean
+          slot_minutes?: number
+          start_time?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinic_working_hours_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinical_records: {
         Row: {
           attachments: string[]
@@ -840,6 +884,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_clinic_member_by_email: {
+        Args: {
+          _clinic_id: string
+          _email: string
+          _role?: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: {
+          active: boolean
+          email: string
+          full_name: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }[]
+      }
       has_clinic_role: {
         Args: {
           _clinic_id: string
