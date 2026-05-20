@@ -14,9 +14,11 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { EntitySearchInput } from "@/components/EntitySearchInput";
 import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useClinic } from "@/contexts/ClinicContext";
+import { clearPersistentState, usePersistentState } from "@/hooks/usePersistentState";
 import { db } from "@/lib/clinicCloud";
 import { formatCurrency, parseCurrencyInput } from "@/lib/utils";
 
@@ -38,12 +40,23 @@ type Appointment = {
   notes: string;
 };
 
-type PatientOption = { id: string; name: string };
+type PatientOption = { id: string; name: string; cpf?: string };
 type ProfessionalOption = { id: string; name: string; active: boolean };
 type ProcedureOption = { id: string; name: string; defaultPrice: number; averageDuration: number };
+type WorkingHour = { dayOfWeek: number; isOpen: boolean; startTime: string; endTime: string; slotMinutes: number };
+
+const storageKeys = {
+  selectedDate: "dentalflow.agenda.selectedDate",
+  selectedProfessional: "dentalflow.agenda.selectedProfessional",
+  selectedStatus: "dentalflow.agenda.selectedStatus",
+  view: "dentalflow.agenda.view",
+  showForm: "dentalflow.agenda.showForm",
+  draft: "dentalflow.agenda.draft",
+};
 
 type AppointmentForm = {
   patientId: string;
+  patientName: string;
   professionalId: string;
   procedureId: string;
   customProcedure: string;
@@ -76,7 +89,7 @@ const statusLabels: Record<string, string> = {
   missed: "Faltou",
 };
 
-const timeSlots = ["08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"];
+const fallbackTimeSlots = ["08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"];
 
 function today() {
   return new Date().toISOString().split("T")[0];
@@ -85,6 +98,7 @@ function today() {
 function emptyForm(date = today()): AppointmentForm {
   return {
     patientId: "",
+    patientName: "",
     professionalId: "",
     procedureId: "custom",
     customProcedure: "",
@@ -128,6 +142,31 @@ function getMonthDays(dateStr: string) {
   return days;
 }
 
+function minutesFromTime(time: string) {
+  const [hours, minutes] = time.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+function timeFromMinutes(total: number) {
+  const hours = Math.floor(total / 60);
+  const minutes = total % 60;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function slotsForDate(date: string, workingHours: WorkingHour[]) {
+  const day = new Date(`${date}T12:00:00`).getDay();
+  const config = workingHours.find((item) => item.dayOfWeek === day);
+  if (!config) return fallbackTimeSlots;
+  if (!config.isOpen) return [];
+  const start = minutesFromTime(config.startTime);
+  const end = minutesFromTime(config.endTime);
+  const slots: string[] = [];
+  for (let current = start; current <= end; current += config.slotMinutes) {
+    slots.push(timeFromMinutes(current));
+  }
+  return slots;
+}
+
 function mapAppointment(row: any): Appointment {
   return {
     id: row.id,
@@ -152,19 +191,34 @@ export default function AgendaPage() {
   const [patients, setPatients] = useState<PatientOption[]>([]);
   const [professionals, setProfessionals] = useState<ProfessionalOption[]>([]);
   const [procedures, setProcedures] = useState<ProcedureOption[]>([]);
-  const [selectedDate, setSelectedDate] = useState(today());
-  const [selectedProfessional, setSelectedProfessional] = useState("all");
-  const [selectedStatus, setSelectedStatus] = useState("all");
-  const [view, setView] = useState<"day" | "week" | "month">("day");
+  const [workingHours, setWorkingHours] = useState<WorkingHour[]>([]);
+  const [selectedDate, setSelectedDate] = usePersistentState(storageKeys.selectedDate, today());
+  const [selectedProfessional, setSelectedProfessional] = usePersistentState(storageKeys.selectedProfessional, "all");
+  const [selectedStatus, setSelectedStatus] = usePersistentState(storageKeys.selectedStatus, "all");
+  const [view, setView] = usePersistentState<"day" | "week" | "month">(storageKeys.view, "day");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState<AppointmentForm>(emptyForm());
+  const [showForm, setShowForm] = usePersistentState(storageKeys.showForm, false);
+  const [form, setForm] = usePersistentState<AppointmentForm>(storageKeys.draft, emptyForm());
   const [editingApt, setEditingApt] = useState<Appointment | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const activeProfessionals = professionals.filter((p) => p.active);
+  const patientOptions = useMemo(() => patients.map((patient) => ({
+    id: patient.id,
+    label: patient.name,
+    description: patient.cpf || undefined,
+    search: patient.cpf || "",
+  })), [patients]);
+  const procedureOptions = useMemo(() => procedures.map((procedure) => ({
+    id: procedure.id,
+    label: procedure.name,
+    description: formatCurrency(procedure.defaultPrice),
+    search: `${procedure.defaultPrice} ${procedure.averageDuration}`,
+  })), [procedures]);
   const selectedProc = procedures.find((p) => p.id === form.procedureId);
+  const displayTimeSlots = useMemo(() => slotsForDate(selectedDate, workingHours), [selectedDate, workingHours]);
+  const formTimeSlots = useMemo(() => slotsForDate(form.date || selectedDate, workingHours), [form.date, selectedDate, workingHours]);
 
   useEffect(() => {
     if (!clinic.id) {
@@ -177,19 +231,20 @@ export default function AgendaPage() {
   const loadData = async () => {
     if (!clinic.id) return;
     setLoading(true);
-    const [appointmentRes, patientRes, professionalRes, procedureRes] = await Promise.all([
+    const [appointmentRes, patientRes, professionalRes, procedureRes, hoursRes] = await Promise.all([
       db.from("appointments").select("*").eq("clinic_id", clinic.id).order("appointment_date", { ascending: true }).order("appointment_time"),
-      db.from("patients").select("id, name").eq("clinic_id", clinic.id).order("name"),
+      db.from("patients").select("id, name, cpf").eq("clinic_id", clinic.id).order("name"),
       db.from("professionals").select("id, name, active").eq("clinic_id", clinic.id).order("name"),
       db.from("procedures").select("id, name, default_price, average_duration").eq("clinic_id", clinic.id).order("name"),
+      db.from("clinic_working_hours").select("day_of_week, is_open, start_time, end_time, slot_minutes").eq("clinic_id", clinic.id),
     ]);
     setLoading(false);
 
     const error = appointmentRes.error || patientRes.error || professionalRes.error || procedureRes.error;
-    if (error) return toast.error("Não foi possível carregar a agenda.");
+    if (error) return toast.error("Nao foi possivel carregar a agenda.");
 
     setAppointments((appointmentRes.data || []).map(mapAppointment));
-    setPatients((patientRes.data || []).map((p: any) => ({ id: p.id, name: p.name || "" })));
+    setPatients((patientRes.data || []).map((p: any) => ({ id: p.id, name: p.name || "", cpf: p.cpf || "" })));
     setProfessionals((professionalRes.data || []).map((p: any) => ({ id: p.id, name: p.name || "", active: Boolean(p.active) })));
     setProcedures((procedureRes.data || []).map((p: any) => ({
       id: p.id,
@@ -197,6 +252,15 @@ export default function AgendaPage() {
       defaultPrice: Number(p.default_price || 0),
       averageDuration: Number(p.average_duration || 30),
     })));
+    if (!hoursRes.error) {
+      setWorkingHours((hoursRes.data || []).map((row: any) => ({
+        dayOfWeek: Number(row.day_of_week),
+        isOpen: Boolean(row.is_open),
+        startTime: String(row.start_time || "08:00").slice(0, 5),
+        endTime: String(row.end_time || "18:00").slice(0, 5),
+        slotMinutes: Number(row.slot_minutes || 60),
+      })));
+    }
   };
 
   const filterAppointments = (date: string) => appointments.filter((a) => {
@@ -213,30 +277,27 @@ export default function AgendaPage() {
   const handleDelete = async () => {
     if (!clinic.id || !deleteId) return;
     const { error } = await db.from("appointments").delete().eq("id", deleteId).eq("clinic_id", clinic.id);
-    if (error) return toast.error("Não foi possível excluir o agendamento.");
+    if (error) return toast.error("Nao foi possivel excluir o agendamento.");
     setAppointments((prev) => prev.filter((a) => a.id !== deleteId));
-    toast.success("Agendamento excluído com sucesso");
+    toast.success("Agendamento excluido com sucesso");
     setDeleteId(null);
   };
 
   const handleSave = async () => {
-    if (!clinic.id) return toast.error("Clínica não vinculada. Verifique o cadastro da clínica atualizados.");
+    if (!clinic.id) return toast.error("Clinica nao vinculada. Verifique o cadastro da clinica atual.");
     const patient = patients.find((p) => p.id === form.patientId);
-    const professional = professionals.find((p) => p.id === form.professionalId);
-    if (!patient) return toast.error("Selecione um paciente cadastrado.");
-    if (!professional) return toast.error("Selecione um profissional.");
+    if (!patient) return toast.error("Selecione um cliente cadastrado.");
 
-    const procedureName = selectedProc?.name || form.customProcedure.trim();
-    if (!procedureName) return toast.error("Informe o procedimento.");
+    const procedureName = selectedProc?.name || form.customProcedure.trim() || "Sem procedimento";
 
     setSaving(true);
     const payload = {
       clinic_id: clinic.id,
       patient_id: patient.id,
-      professional_id: professional.id,
+      professional_id: null,
       procedure_id: selectedProc?.id || null,
       patient_name: patient.name,
-      professional_name: professional.name,
+      professional_name: "",
       procedure_name: procedureName,
       appointment_date: form.date,
       appointment_time: form.time,
@@ -251,7 +312,7 @@ export default function AgendaPage() {
       : db.from("appointments").insert(payload).select().single();
     const { data, error } = await query;
     setSaving(false);
-    if (error) return toast.error("Não foi possível salvar o agendamento.");
+    if (error) return toast.error("Nao foi possivel salvar o agendamento.");
 
     const saved = mapAppointment(data);
     setAppointments((prev) => editingApt ? prev.map((a) => a.id === saved.id ? saved : a) : [...prev, saved]);
@@ -259,12 +320,15 @@ export default function AgendaPage() {
     setShowForm(false);
     setEditingApt(null);
     setForm(emptyForm(selectedDate));
+    clearPersistentState(storageKeys.draft);
+    clearPersistentState(storageKeys.showForm);
   };
 
   const openEdit = (apt: Appointment) => {
     setEditingApt(apt);
     setForm({
       patientId: apt.patientId,
+      patientName: apt.patientName,
       professionalId: apt.professionalId,
       procedureId: apt.procedureId || "custom",
       customProcedure: apt.procedure,
@@ -280,7 +344,7 @@ export default function AgendaPage() {
 
   const openNew = () => {
     setEditingApt(null);
-    setForm(emptyForm(selectedDate));
+    setForm(form.patientId || form.patientName || form.professionalId || form.customProcedure || form.notes ? form : emptyForm(selectedDate));
     setShowForm(true);
   };
 
@@ -307,7 +371,7 @@ export default function AgendaPage() {
   };
 
   return (
-    <ClinicLayout title="Agenda" subtitle="Gerenciamento de consultas integrado ao sistema">
+    <ClinicLayout title="Agenda" subtitle="Gerenciamento de atendimentos integrado ao sistema">
       <div className="space-y-4 animate-fade-in">
         <div className="flex flex-col gap-3">
           <div className="flex flex-col sm:flex-row gap-3 justify-between">
@@ -323,7 +387,7 @@ export default function AgendaPage() {
                 <TabsList className="h-8">
                   <TabsTrigger value="day" className="text-xs px-3 h-6">Dia</TabsTrigger>
                   <TabsTrigger value="week" className="text-xs px-3 h-6">Semana</TabsTrigger>
-                  <TabsTrigger value="month" className="text-xs px-3 h-6">Mês</TabsTrigger>
+                  <TabsTrigger value="month" className="text-xs px-3 h-6">Mes</TabsTrigger>
                 </TabsList>
               </Tabs>
 
@@ -356,7 +420,7 @@ export default function AgendaPage() {
         {!loading && view === "day" && (
           <Card className="p-0 overflow-hidden">
             <div className="divide-y divide-border">
-              {timeSlots.map((time) => {
+              {displayTimeSlots.map((time) => {
                 const slotsAtTime = filtered.filter((a) => a.time === time);
                 return (
                   <div key={time} className="flex min-h-[56px]">
@@ -387,7 +451,7 @@ export default function AgendaPage() {
                 </tr>
               </thead>
               <tbody>
-                {timeSlots.map((time) => (
+                {displayTimeSlots.map((time) => (
                   <tr key={time} className="border-b border-border/50">
                     <td className="p-1 text-xs text-muted-foreground text-center border-r border-border bg-muted/30">{time}</td>
                     {weekDays.map((day) => {
@@ -404,7 +468,7 @@ export default function AgendaPage() {
         {!loading && view === "month" && (
           <Card className="p-0 overflow-hidden">
             <div className="grid grid-cols-7 border-b border-border bg-muted/50">
-              {["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"].map((d) => <div key={d} className="p-2 text-center text-xs font-medium text-muted-foreground">{d}</div>)}
+              {["Seg", "Ter", "Qua", "Qui", "Sex", "Sab", "Dom"].map((d) => <div key={d} className="p-2 text-center text-xs font-medium text-muted-foreground">{d}</div>)}
             </div>
             <div className="grid grid-cols-7">
               {monthDays.map((day, i) => {
@@ -432,28 +496,24 @@ export default function AgendaPage() {
             <DialogHeader><DialogTitle>{editingApt ? "Editar Agendamento" : "Novo Agendamento"}</DialogTitle></DialogHeader>
             <div className="grid grid-cols-2 gap-3 mt-2">
               <div className="col-span-2">
-                <Label>Paciente</Label>
-                <Select value={form.patientId} onValueChange={(patientId) => setForm((prev) => ({ ...prev, patientId }))}>
-                  <SelectTrigger><SelectValue placeholder="Selecione o paciente" /></SelectTrigger>
-                  <SelectContent>{patients.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
-                </Select>
+                <EntitySearchInput
+                  label="Cliente"
+                  value={form.patientName}
+                  options={patientOptions}
+                  placeholder="Digite para procurar cliente"
+                  onQueryChange={(patientName) => setForm((prev) => ({ ...prev, patientName, patientId: "" }))}
+                  onSelect={(option) => setForm((prev) => ({ ...prev, patientId: option.id, patientName: option.label }))}
+                />
               </div>
               <div><Label>Data</Label><Input type="date" value={form.date} onChange={(e) => setForm((prev) => ({ ...prev, date: e.target.value }))} /></div>
               <div>
-                <Label>Horário</Label>
+                <Label>Horario</Label>
                 <Select value={form.time} onValueChange={(time) => setForm((prev) => ({ ...prev, time }))}>
-                  <SelectTrigger><SelectValue placeholder="Horário" /></SelectTrigger>
-                  <SelectContent>{timeSlots.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                  <SelectTrigger><SelectValue placeholder="Horario" /></SelectTrigger>
+                  <SelectContent>{formTimeSlots.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label>Profissional</Label>
-                <Select value={form.professionalId} onValueChange={(professionalId) => setForm((prev) => ({ ...prev, professionalId }))}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>{activeProfessionals.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div>
+              <div className="col-span-2">
                 <Label>Status</Label>
                 <Select value={form.status} onValueChange={(status: AppointmentStatus) => setForm((prev) => ({ ...prev, status }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
@@ -466,28 +526,29 @@ export default function AgendaPage() {
                 </Select>
               </div>
               <div className="col-span-2">
-                <Label>Procedimento pré-cadastrado</Label>
-                <Select value={form.procedureId} onValueChange={(procedureId) => {
-                  const proc = procedures.find((p) => p.id === procedureId);
-                  setForm((prev) => ({
-                    ...prev,
-                    procedureId,
-                    duration: proc?.averageDuration || prev.duration,
-                    value: proc?.defaultPrice || prev.value,
-                  }));
-                }}>
-                  <SelectTrigger><SelectValue placeholder="Selecione um procedimento" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="custom">Procedimento personalizado</SelectItem>
-                    {procedures.map((p) => <SelectItem key={p.id} value={p.id}>{p.name} - {formatCurrency(p.defaultPrice)}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <EntitySearchInput
+                  label="Procedimento"
+                  value={form.customProcedure}
+                  options={procedureOptions}
+                  allowCustom
+                  placeholder="Digite para procurar procedimento"
+                  onQueryChange={(customProcedure) => setForm((prev) => ({ ...prev, customProcedure, procedureId: "custom" }))}
+                  onSelect={(option) => {
+                    const proc = procedures.find((p) => p.id === option.id);
+                    setForm((prev) => ({
+                      ...prev,
+                      procedureId: option.id,
+                      customProcedure: option.label,
+                      duration: proc?.averageDuration || prev.duration,
+                      value: proc?.defaultPrice || prev.value,
+                    }));
+                  }}
+                />
                 {selectedProc && <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground"><span className="flex items-center gap-1"><Clock className="h-3 w-3" />{selectedProc.averageDuration}min</span><span>{formatCurrency(selectedProc.defaultPrice)}</span></div>}
               </div>
-              {form.procedureId === "custom" && <div className="col-span-2"><Label>Procedimento personalizado</Label><Input placeholder="Descrição do procedimento" value={form.customProcedure} onChange={(e) => setForm((prev) => ({ ...prev, customProcedure: e.target.value }))} /></div>}
-              <div><Label>Duração (min)</Label><Input type="number" value={form.duration} onChange={(e) => setForm((prev) => ({ ...prev, duration: Number(e.target.value) }))} /></div>
+              <div><Label>Duracao (min)</Label><Input type="number" value={form.duration} onChange={(e) => setForm((prev) => ({ ...prev, duration: Number(e.target.value) }))} /></div>
               <div><Label>Valor (R$)</Label><Input inputMode="numeric" value={formatCurrency(form.value)} onChange={(e) => setForm((prev) => ({ ...prev, value: parseCurrencyInput(e.target.value) }))} /></div>
-              <div className="col-span-2"><Label>Observações</Label><Textarea placeholder="Notas adicionais..." rows={2} value={form.notes} onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))} /></div>
+              <div className="col-span-2"><Label>Observacoes</Label><Textarea placeholder="Notas adicionais..." rows={2} value={form.notes} onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))} /></div>
             </div>
             <div className="flex justify-end gap-2 mt-4">
               <Button variant="outline" onClick={() => { setShowForm(false); setEditingApt(null); }}>Cancelar</Button>
@@ -508,7 +569,7 @@ function AppointmentCard({ apt, onEdit, onDelete }: { apt: Appointment; onEdit: 
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium text-foreground">{apt.patientName}</p>
-          <p className="text-xs text-muted-foreground">{apt.procedure} • {apt.professionalName} • {apt.duration}min</p>
+          <p className="text-xs text-muted-foreground">{[apt.procedure, apt.professionalName, `${apt.duration}min`].filter(Boolean).join(" - ")}</p>
         </div>
         <div className="flex items-center gap-1">
           <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${statusBadge[apt.status]}`}>{statusLabels[apt.status]}</span>
@@ -530,4 +591,3 @@ function MiniAppointment({ apt, onClick }: { apt: Appointment; onClick: () => vo
     </div>
   );
 }
-

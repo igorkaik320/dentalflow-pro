@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { ClinicLayout } from "@/components/ClinicLayout";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useClinic } from "@/contexts/ClinicContext";
+import { usePersistentState } from "@/hooks/usePersistentState";
 import { db } from "@/lib/clinicCloud";
 import {
   DollarSign,
@@ -88,6 +92,10 @@ function today() {
   return new Date().toISOString().split("T")[0];
 }
 
+function firstDayOfMonth() {
+  return `${today().slice(0, 7)}-01`;
+}
+
 function monthKey(date: string | null | undefined) {
   if (!date) return "";
   return date.slice(0, 7);
@@ -104,6 +112,24 @@ function lastSixMonthKeys() {
     const date = new Date(base.getFullYear(), base.getMonth() - (5 - index), 1);
     return date.toISOString().slice(0, 7);
   });
+}
+
+function periodMonthKeys(start: string, end: string) {
+  if (!start || !end) return lastSixMonthKeys();
+  const first = new Date(`${start.slice(0, 7)}-01T12:00:00`);
+  const last = new Date(`${end.slice(0, 7)}-01T12:00:00`);
+  const keys: string[] = [];
+  for (let cursor = first; cursor <= last && keys.length < 12; cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1)) {
+    keys.push(cursor.toISOString().slice(0, 7));
+  }
+  return keys.length ? keys : lastSixMonthKeys();
+}
+
+function dateInPeriod(dateText: string | null | undefined, start: string, end: string) {
+  if (!dateText) return false;
+  if (start && dateText < start) return false;
+  if (end && dateText > end) return false;
+  return true;
 }
 
 function payableExpenseRows(payables: PayableRow[]) {
@@ -132,6 +158,8 @@ export default function DashboardPage() {
   const [patients, setPatients] = useState<PatientRow[]>([]);
   const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [periodStart, setPeriodStart] = usePersistentState("dentalflow.dashboard.periodStart", firstDayOfMonth());
+  const [periodEnd, setPeriodEnd] = usePersistentState("dentalflow.dashboard.periodEnd", today());
 
   useEffect(() => {
     if (!clinic.id) {
@@ -169,20 +197,18 @@ export default function DashboardPage() {
     setAppointments(appointmentRes.data || []);
   };
 
-  const currentMonth = today().slice(0, 7);
-
   const metrics = useMemo(() => {
-    const monthReceivables = receivables.filter((item) => monthKey(item.due_date) === currentMonth || monthKey(item.paid_date) === currentMonth);
-    const monthlyRevenue = monthReceivables.reduce((sum, item) => sum + item.amount, 0);
-    const totalReceived = receivables.filter((item) => item.status === "paid").reduce((sum, item) => sum + item.amount, 0);
-    const totalOpen = receivables.filter((item) => item.status === "open" || item.status === "overdue").reduce((sum, item) => sum + item.amount, 0);
-    const newPatients = patients.filter((patient) => monthKey(patient.created_at) === currentMonth).length;
+    const periodReceivables = receivables.filter((item) => dateInPeriod(item.paid_date || item.due_date, periodStart, periodEnd));
+    const monthlyRevenue = periodReceivables.reduce((sum, item) => sum + item.amount, 0);
+    const totalReceived = periodReceivables.filter((item) => item.status === "paid").reduce((sum, item) => sum + item.amount, 0);
+    const totalOpen = periodReceivables.filter((item) => item.status === "open" || item.status === "overdue").reduce((sum, item) => sum + item.amount, 0);
+    const newPatients = patients.filter((patient) => dateInPeriod(patient.created_at.slice(0, 10), periodStart, periodEnd)).length;
     return { monthlyRevenue, totalReceived, totalOpen, newPatients };
-  }, [receivables, patients, currentMonth]);
+  }, [receivables, patients, periodStart, periodEnd]);
 
   const monthlyData = useMemo(() => {
     const expenseRows = payableExpenseRows(payables);
-    return lastSixMonthKeys().map((key) => ({
+    return periodMonthKeys(periodStart, periodEnd).map((key) => ({
       month: monthLabel(key),
       revenue: receivables
         .filter((item) => monthKey(item.paid_date || item.due_date) === key)
@@ -191,26 +217,46 @@ export default function DashboardPage() {
         .filter((item) => monthKey(item.paid_date || item.due_date) === key)
         .reduce((sum, item) => sum + item.amount, 0),
     }));
-  }, [receivables, payables]);
+  }, [receivables, payables, periodStart, periodEnd]);
 
   const financialSummary = useMemo(() => {
-    const expenseRows = payableExpenseRows(payables);
+    const expenseRows = payableExpenseRows(payables).filter((item) => dateInPeriod(item.paid_date || item.due_date, periodStart, periodEnd));
     const paidExpenses = expenseRows.filter((item) => item.status === "paid").reduce((sum, item) => sum + item.amount, 0);
     const openExpenses = expenseRows.filter((item) => item.status !== "paid").reduce((sum, item) => sum + item.amount, 0);
     const balance = metrics.totalReceived - paidExpenses;
     return { paidExpenses, openExpenses, balance };
-  }, [payables, metrics.totalReceived]);
+  }, [payables, metrics.totalReceived, periodStart, periodEnd]);
 
   const stats = [
-    { label: "Faturamento Mensal", value: formatCurrency(metrics.monthlyRevenue), icon: DollarSign, trend: "Atual", up: true },
+    { label: "Faturamento no periodo", value: formatCurrency(metrics.monthlyRevenue), icon: DollarSign, trend: "Atual", up: true },
     { label: "Total Recebido", value: formatCurrency(metrics.totalReceived), icon: TrendingUp, trend: "Pago", up: true },
     { label: "Em Aberto", value: formatCurrency(metrics.totalOpen), icon: Clock, trend: "Pendente", up: false },
-    { label: "Pacientes Novos", value: metrics.newPatients.toString(), icon: Users, trend: "Mês", up: true },
+    { label: "Clientes Novos", value: metrics.newPatients.toString(), icon: Users, trend: "Mês", up: true },
   ];
 
   return (
     <ClinicLayout title="Dashboard" subtitle="Visão geral da clínica com dados atualizados">
       <div className="space-y-6 animate-fade-in">
+        <Card className="p-4">
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_180px_180px_auto] gap-3 items-end">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Periodo do dashboard</p>
+              <p className="text-xs text-muted-foreground">Filtra indicadores, grafico e resumo financeiro.</p>
+            </div>
+            <div>
+              <Label>Inicio</Label>
+              <Input type="date" value={periodStart} onChange={(event) => setPeriodStart(event.target.value)} />
+            </div>
+            <div>
+              <Label>Fim</Label>
+              <Input type="date" value={periodEnd} onChange={(event) => setPeriodEnd(event.target.value)} />
+            </div>
+            <Button type="button" variant="outline" onClick={() => { setPeriodStart(firstDayOfMonth()); setPeriodEnd(today()); }}>
+              Mes atual
+            </Button>
+          </div>
+        </Card>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map((stat) => (
             <Card key={stat.label} className="stat-card">

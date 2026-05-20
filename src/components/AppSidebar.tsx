@@ -5,6 +5,7 @@ import {
   Settings,
   Activity,
   ClipboardList,
+  Lock,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -22,6 +23,7 @@ import {
   SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { useState } from "react";
 
 const mainItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -34,8 +36,17 @@ const financeItems = [
 ];
 
 const systemItems = [
-  { title: "Configurações", url: "/configuracoes", icon: Settings },
+  { title: "Configuracoes", url: "/configuracoes", icon: Settings },
+  { title: "Seguranca", url: "/seguranca", icon: Lock },
 ];
+
+function ClinicLogo({ logoUrl }: { logoUrl: string | null }) {
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  if (logoUrl && logoUrl !== failedUrl) {
+    return <img src={logoUrl} alt="Logo" className="h-6 w-6 rounded object-cover" onError={() => setFailedUrl(logoUrl)} />;
+  }
+  return <Activity className="h-4 w-4 text-sidebar-primary-foreground" />;
+}
 
 export function AppSidebar() {
   const { state } = useSidebar();
@@ -50,11 +61,7 @@ export function AppSidebar() {
       <SidebarHeader className="border-b border-sidebar-border px-3 py-3">
         <div className="flex items-center gap-2.5 overflow-hidden">
           <div className="h-8 w-8 rounded-lg bg-sidebar-primary flex items-center justify-center shrink-0">
-            {clinic.logoUrl ? (
-              <img src={clinic.logoUrl} alt="Logo" className="h-6 w-6 rounded object-cover" />
-            ) : (
-              <Activity className="h-4 w-4 text-sidebar-primary-foreground" />
-            )}
+            <ClinicLogo logoUrl={clinic.logoUrl} />
           </div>
           {!collapsed && (
             <div className="leading-tight min-w-0">

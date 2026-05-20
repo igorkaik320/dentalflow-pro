@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { AppSidebar } from "./AppSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { Bell } from "lucide-react";
+import { Bell, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useClinic } from "@/contexts/ClinicContext";
 
@@ -12,7 +12,14 @@ interface ClinicLayoutProps {
 }
 
 export function ClinicLayout({ children, title, subtitle }: ClinicLayoutProps) {
-  const { clinic } = useClinic();
+  const { clinic, user, signOut } = useClinic();
+  const initials = (user?.email || clinic.name || "U")
+    .split("@")[0]
+    .split(/[.\s_-]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "U";
 
   return (
     <SidebarProvider>
@@ -33,8 +40,12 @@ export function ClinicLayout({ children, title, subtitle }: ClinicLayoutProps) {
                 <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-destructive" />
               </Button>
               <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-semibold">
-                AD
+                {initials}
               </div>
+              <Button variant="outline" size="sm" onClick={signOut} className="gap-1.5">
+                <LogOut className="h-4 w-4" />
+                <span className="hidden sm:inline">Sair</span>
+              </Button>
             </div>
           </header>
           <main className="flex-1 p-4 sm:p-6 overflow-auto">

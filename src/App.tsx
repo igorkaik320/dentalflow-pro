@@ -9,10 +9,18 @@ import DashboardPage from "./pages/DashboardPage";
 import AgendaPage from "./pages/AgendaPage";
 import FinancialPage from "./pages/FinancialPage";
 import SettingsPage from "./pages/SettingsPage";
+import SecurityPage from "./pages/SecurityPage";
 import RegistrationsPage from "./pages/RegistrationsPage";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -29,6 +37,7 @@ const App = () => (
               <Route path="/cadastros" element={<RegistrationsPage />} />
               <Route path="/financeiro" element={<FinancialPage />} />
               <Route path="/configuracoes" element={<SettingsPage />} />
+              <Route path="/seguranca" element={<SecurityPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthGate>

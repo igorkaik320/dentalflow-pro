@@ -75,9 +75,13 @@ export function ClinicProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, nextSession) => {
       setSession(nextSession);
-      setLoading(true);
+
+      if (event === "TOKEN_REFRESHED") return;
+
+      if (!mounted) return;
+      setLoading(false);
       setTimeout(async () => {
         try {
           await loadClinic(nextSession);

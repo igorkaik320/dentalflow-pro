@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useClinic } from "@/contexts/ClinicContext";
+import { clearPersistentState, usePersistentState } from "@/hooks/usePersistentState";
 import { db } from "@/lib/clinicCloud";
 import { formatCNPJ, formatCPF, formatCurrency, formatDocument, parseCurrencyInput } from "@/lib/utils";
 import type { FinancialCategory, Patient, Procedure, Supplier } from "@/data/mockData";
@@ -39,6 +40,18 @@ const emptyPatient: PatientForm = { name: "", cpf: "", birthDate: "", phone: "",
 const emptyProcedure: ProcedureForm = { name: "", defaultPrice: 0, averageDuration: 30 };
 const emptySupplier: SupplierForm = { name: "", legalName: "", cnpj: "", document: "", phone: "", mobile: "", email: "", category: "", notes: "", bank: "", agency: "", account: "" };
 const emptyCategory: CategoryForm = { name: "", type: "expense" };
+const storageKeys = {
+  activeTab: "dentalflow.registrations.activeTab",
+  patientSearch: "dentalflow.registrations.patientSearch",
+  showPatientForm: "dentalflow.registrations.showPatientForm",
+  showProcedureForm: "dentalflow.registrations.showProcedureForm",
+  showSupplierForm: "dentalflow.registrations.showSupplierForm",
+  showCategoryForm: "dentalflow.registrations.showCategoryForm",
+  patientDraft: "dentalflow.registrations.patientDraft",
+  procedureDraft: "dentalflow.registrations.procedureDraft",
+  supplierDraft: "dentalflow.registrations.supplierDraft",
+  categoryDraft: "dentalflow.registrations.categoryDraft",
+};
 
 const statusLabels: Record<string, string> = {
   confirmed: "Confirmado", attended: "Compareceu", cancelled: "Cancelado", missed: "Faltou",
@@ -94,7 +107,8 @@ function mapCategory(row: any): FinancialCategory {
 export default function RegistrationsPage() {
   const { clinic } = useClinic();
   const [loading, setLoading] = useState(true);
-  const [patientSearch, setPatientSearch] = useState("");
+  const [activeTab, setActiveTab] = usePersistentState(storageKeys.activeTab, "patients");
+  const [patientSearch, setPatientSearch] = usePersistentState(storageKeys.patientSearch, "");
 
   const [patients, setPatients] = useState<Patient[]>([]);
   const [procedures, setProcedures] = useState<Procedure[]>([]);
@@ -102,25 +116,25 @@ export default function RegistrationsPage() {
   const [categories, setCategories] = useState<FinancialCategory[]>([]);
   const [patientHistory, setPatientHistory] = useState<PatientHistoryRow[]>([]);
 
-  const [showPatientForm, setShowPatientForm] = useState(false);
+  const [showPatientForm, setShowPatientForm] = usePersistentState(storageKeys.showPatientForm, false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
-  const [patientForm, setPatientForm] = useState<PatientForm>(emptyPatient);
+  const [patientForm, setPatientForm] = usePersistentState<PatientForm>(storageKeys.patientDraft, emptyPatient);
   const [selectedPatient, setSelectedPatient] = useState<string | null>(null);
   const [deletePatientId, setDeletePatientId] = useState<string | null>(null);
 
-  const [showProcForm, setShowProcForm] = useState(false);
+  const [showProcForm, setShowProcForm] = usePersistentState(storageKeys.showProcedureForm, false);
   const [editingProc, setEditingProc] = useState<Procedure | null>(null);
-  const [procForm, setProcForm] = useState<ProcedureForm>(emptyProcedure);
+  const [procForm, setProcForm] = usePersistentState<ProcedureForm>(storageKeys.procedureDraft, emptyProcedure);
   const [deleteProcId, setDeleteProcId] = useState<string | null>(null);
 
-  const [showSupplierForm, setShowSupplierForm] = useState(false);
+  const [showSupplierForm, setShowSupplierForm] = usePersistentState(storageKeys.showSupplierForm, false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
-  const [supplierForm, setSupplierForm] = useState<SupplierForm>(emptySupplier);
+  const [supplierForm, setSupplierForm] = usePersistentState<SupplierForm>(storageKeys.supplierDraft, emptySupplier);
   const [deleteSupplierId, setDeleteSupplierId] = useState<string | null>(null);
 
-  const [showCatForm, setShowCatForm] = useState(false);
+  const [showCatForm, setShowCatForm] = usePersistentState(storageKeys.showCategoryForm, false);
   const [editingCat, setEditingCat] = useState<FinancialCategory | null>(null);
-  const [catForm, setCatForm] = useState<CategoryForm>(emptyCategory);
+  const [catForm, setCatForm] = usePersistentState<CategoryForm>(storageKeys.categoryDraft, emptyCategory);
   const [deleteCatId, setDeleteCatId] = useState<string | null>(null);
 
   const selected = patients.find(p => p.id === selectedPatient);
@@ -144,7 +158,7 @@ export default function RegistrationsPage() {
       .eq("patient_id", selectedPatient)
       .order("appointment_date", { ascending: false })
       .then(({ data, error }: any) => {
-        if (error) toast.error("Não foi possível carregar o histórico do paciente.");
+        if (error) toast.error("Não foi possível carregar o histórico do cliente.");
         else setPatientHistory(data || []);
       });
   }, [clinic.id, selectedPatient]);
@@ -174,13 +188,13 @@ export default function RegistrationsPage() {
 
   const openPatient = (patient?: Patient) => {
     setEditingPatient(patient || null);
-    setPatientForm(patient ? { name: patient.name, cpf: patient.cpf, birthDate: patient.birthDate, phone: patient.phone, email: patient.email, address: patient.address, notes: patient.notes, medicalNotes: patient.medicalNotes, insurance: patient.insurance } : emptyPatient);
+    setPatientForm(patient ? { name: patient.name, cpf: patient.cpf, birthDate: patient.birthDate, phone: patient.phone, email: patient.email, address: patient.address, notes: patient.notes, medicalNotes: patient.medicalNotes, insurance: patient.insurance } : patientForm);
     setShowPatientForm(true);
   };
 
   const savePatient = async () => {
     if (!clinic.id) return toast.error("Clínica não vinculada. Verifique o cadastro da clínica atualizados.");
-    if (!patientForm.name.trim()) return toast.error("Informe o nome do paciente.");
+    if (!patientForm.name.trim()) return toast.error("Informe o nome do cliente.");
     const payload = {
       clinic_id: clinic.id,
       name: patientForm.name.trim(),
@@ -197,12 +211,15 @@ export default function RegistrationsPage() {
       ? db.from("patients").update(payload).eq("id", editingPatient.id).eq("clinic_id", clinic.id).select().single()
       : db.from("patients").insert(payload).select().single();
     const { data, error } = await query;
-    if (error) return toast.error("Não foi possível salvar o paciente.");
+    if (error) return toast.error("Não foi possível salvar o cliente.");
     const saved = mapPatient(data);
     setPatients(prev => editingPatient ? prev.map(p => p.id === saved.id ? saved : p) : [saved, ...prev]);
-    toast.success(editingPatient ? "Paciente atualizado" : "Paciente cadastrado");
+    toast.success(editingPatient ? "Cliente atualizado" : "Cliente cadastrado");
     setShowPatientForm(false);
     setEditingPatient(null);
+    setPatientForm(emptyPatient);
+    clearPersistentState(storageKeys.patientDraft);
+    clearPersistentState(storageKeys.showPatientForm);
   };
 
   const saveProcedure = async () => {
@@ -219,6 +236,9 @@ export default function RegistrationsPage() {
     toast.success(editingProc ? "Procedimento atualizado" : "Procedimento cadastrado");
     setShowProcForm(false);
     setEditingProc(null);
+    setProcForm(emptyProcedure);
+    clearPersistentState(storageKeys.procedureDraft);
+    clearPersistentState(storageKeys.showProcedureForm);
   };
 
   const saveSupplier = async () => {
@@ -249,6 +269,9 @@ export default function RegistrationsPage() {
     toast.success(editingSupplier ? "Fornecedor atualizado" : "Fornecedor cadastrado");
     setShowSupplierForm(false);
     setEditingSupplier(null);
+    setSupplierForm(emptySupplier);
+    clearPersistentState(storageKeys.supplierDraft);
+    clearPersistentState(storageKeys.showSupplierForm);
   };
 
   const saveCategory = async () => {
@@ -265,6 +288,9 @@ export default function RegistrationsPage() {
     toast.success(editingCat ? "Categoria atualizada" : "Categoria cadastrada");
     setShowCatForm(false);
     setEditingCat(null);
+    setCatForm(emptyCategory);
+    clearPersistentState(storageKeys.categoryDraft);
+    clearPersistentState(storageKeys.showCategoryForm);
   };
 
   const removeRecord = async (table: string, id: string, onSuccess: () => void, label: string) => {
@@ -276,11 +302,11 @@ export default function RegistrationsPage() {
   };
 
   return (
-    <ClinicLayout title="Cadastros" subtitle="Pacientes, procedimentos, fornecedores e categorias integrados ao backend">
+    <ClinicLayout title="Cadastros" subtitle="Clientes, procedimentos, fornecedores e categorias integrados ao backend">
       <div className="space-y-5 animate-fade-in">
-        <Tabs defaultValue="patients">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="flex-wrap">
-            <TabsTrigger value="patients" className="gap-1.5"><User className="h-3.5 w-3.5" />Pacientes</TabsTrigger>
+            <TabsTrigger value="patients" className="gap-1.5"><User className="h-3.5 w-3.5" />Clientes</TabsTrigger>
             <TabsTrigger value="procedures" className="gap-1.5"><Stethoscope className="h-3.5 w-3.5" />Procedimentos</TabsTrigger>
             <TabsTrigger value="suppliers" className="gap-1.5"><Building className="h-3.5 w-3.5" />Fornecedores</TabsTrigger>
             <TabsTrigger value="categories" className="gap-1.5"><Tag className="h-3.5 w-3.5" />Categorias</TabsTrigger>
@@ -290,13 +316,13 @@ export default function RegistrationsPage() {
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row gap-3 justify-between">
                 <div className="relative flex-1 max-w-md"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Buscar por nome ou CPF..." value={patientSearch} onChange={e => setPatientSearch(e.target.value)} className="pl-9" /></div>
-                <Button onClick={() => openPatient()}><Plus className="h-4 w-4 mr-1.5" />Novo Paciente</Button>
+                <Button onClick={() => openPatient()}><Plus className="h-4 w-4 mr-1.5" />Novo Cliente</Button>
               </div>
               <Card className="overflow-hidden"><div className="overflow-x-auto"><table className="w-full">
                 <thead><tr className="border-b border-border bg-muted/50"><th className="text-left text-xs font-medium text-muted-foreground p-3">Nome</th><th className="text-left text-xs font-medium text-muted-foreground p-3">CPF</th><th className="text-left text-xs font-medium text-muted-foreground p-3 hidden md:table-cell">Telefone</th><th className="text-left text-xs font-medium text-muted-foreground p-3 hidden lg:table-cell">Convênio</th><th className="text-left text-xs font-medium text-muted-foreground p-3 hidden lg:table-cell">Cadastro</th><th className="text-right text-xs font-medium text-muted-foreground p-3">Ações</th></tr></thead>
                 <tbody>{loading ? <tr><td colSpan={6} className="p-8 text-center text-sm text-muted-foreground">Carregando cadastros...</td></tr> : filteredPatients.map(patient => (
                   <tr key={patient.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors"><td className="p-3"><p className="text-sm font-medium text-foreground">{patient.name}</p>{patient.notes && <p className="text-[10px] text-warning mt-0.5">⚠ {patient.notes}</p>}</td><td className="p-3 text-sm text-muted-foreground">{patient.cpf}</td><td className="p-3 hidden md:table-cell"><span className="text-sm text-muted-foreground flex items-center gap-1"><Phone className="h-3 w-3" />{patient.phone}</span></td><td className="p-3 hidden lg:table-cell"><Badge variant="secondary" className="text-xs font-normal">{patient.insurance}</Badge></td><td className="p-3 hidden lg:table-cell text-sm text-muted-foreground">{new Date(patient.createdAt).toLocaleDateString("pt-BR")}</td><td className="p-3 text-right"><div className="flex items-center justify-end gap-1"><Button variant="ghost" size="sm" onClick={() => setSelectedPatient(patient.id)} title="Visualizar"><Eye className="h-3.5 w-3.5" /></Button><Button variant="ghost" size="sm" onClick={() => openPatient(patient)} title="Editar"><Edit2 className="h-3.5 w-3.5" /></Button><Button variant="ghost" size="sm" onClick={() => setDeletePatientId(patient.id)} title="Excluir" className="text-destructive hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button></div></td></tr>
-                ))}{!loading && filteredPatients.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-sm text-muted-foreground">Nenhum paciente encontrado.</td></tr>}</tbody>
+                ))}{!loading && filteredPatients.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-sm text-muted-foreground">Nenhum cliente encontrado.</td></tr>}</tbody>
               </table></div></Card>
             </div>
           </TabsContent>
@@ -308,7 +334,7 @@ export default function RegistrationsPage() {
           <TabsContent value="categories"><TableSection count={`${categories.length} categorias cadastradas`} actionLabel="Nova Categoria" onAction={() => { setEditingCat(null); setCatForm(emptyCategory); setShowCatForm(true); }}><thead><tr className="border-b border-border bg-muted/50"><th className="text-left text-xs font-medium text-muted-foreground p-3">Nome</th><th className="text-left text-xs font-medium text-muted-foreground p-3">Tipo</th><th className="text-right text-xs font-medium text-muted-foreground p-3">Ações</th></tr></thead><tbody>{categories.map(cat => <tr key={cat.id} className="border-b border-border/50 hover:bg-muted/30"><td className="p-3"><div className="flex items-center gap-2.5"><div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${cat.type === "income" ? "bg-success/10" : "bg-destructive/10"}`}><Tag className={`h-3.5 w-3.5 ${cat.type === "income" ? "text-success" : "text-destructive"}`} /></div><span className="text-sm font-medium text-foreground">{cat.name}</span></div></td><td className="p-3"><Badge variant="secondary" className="text-xs font-normal">{cat.type === "income" ? "Receita" : "Despesa"}</Badge></td><td className="p-3 text-right"><Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => { setEditingCat(cat); setCatForm({ name: cat.name, type: cat.type }); setShowCatForm(true); }}><Edit2 className="h-3 w-3" /></Button><Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive" onClick={() => setDeleteCatId(cat.id)}><Trash2 className="h-3 w-3" /></Button></td></tr>)}</tbody></TableSection></TabsContent>
         </Tabs>
 
-        <Dialog open={showPatientForm} onOpenChange={open => { setShowPatientForm(open); if (!open) setEditingPatient(null); }}><DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto"><DialogHeader><DialogTitle>{editingPatient ? "Editar Paciente" : "Cadastrar Paciente"}</DialogTitle></DialogHeader><div className="space-y-6 mt-2"><div><div className="flex items-center gap-2 mb-3"><User className="h-4 w-4 text-primary" /><h3 className="text-sm font-semibold text-foreground">Dados Pessoais</h3></div><div className="grid grid-cols-2 gap-3"><div className="col-span-2"><Label>Nome completo</Label><Input value={patientForm.name} onChange={e => setPatientForm({ ...patientForm, name: e.target.value })} /></div><div><Label>CPF</Label><Input inputMode="numeric" value={patientForm.cpf} onChange={e => setPatientForm({ ...patientForm, cpf: formatCPF(e.target.value) })} /></div><div><Label>Data de nascimento</Label><Input type="date" value={patientForm.birthDate} onChange={e => setPatientForm({ ...patientForm, birthDate: e.target.value })} /></div></div></div><Separator /><div><div className="flex items-center gap-2 mb-3"><Phone className="h-4 w-4 text-primary" /><h3 className="text-sm font-semibold text-foreground">Contato</h3></div><div className="grid grid-cols-2 gap-3"><div><Label>Telefone</Label><Input value={patientForm.phone} onChange={e => setPatientForm({ ...patientForm, phone: e.target.value })} /></div><div><Label>Email</Label><Input value={patientForm.email} onChange={e => setPatientForm({ ...patientForm, email: e.target.value })} /></div><div className="col-span-2"><Label>Endereço</Label><Input value={patientForm.address} onChange={e => setPatientForm({ ...patientForm, address: e.target.value })} /></div></div></div><Separator /><div><div className="flex items-center gap-2 mb-3"><Heart className="h-4 w-4 text-primary" /><h3 className="text-sm font-semibold text-foreground">Informações Clínicas</h3></div><div className="grid grid-cols-2 gap-3"><div><Label>Convênio</Label><Input value={patientForm.insurance} onChange={e => setPatientForm({ ...patientForm, insurance: e.target.value })} /></div><div><Label>Alergias / Alertas</Label><Input value={patientForm.notes} onChange={e => setPatientForm({ ...patientForm, notes: e.target.value })} /></div><div className="col-span-2"><Label>Observações médicas</Label><Textarea rows={3} value={patientForm.medicalNotes} onChange={e => setPatientForm({ ...patientForm, medicalNotes: e.target.value })} /></div></div></div></div><div className="flex justify-end gap-2 mt-6"><Button variant="outline" onClick={() => setShowPatientForm(false)}>Cancelar</Button><Button onClick={savePatient}>{editingPatient ? "Atualizar" : "Salvar"}</Button></div></DialogContent></Dialog>
+        <Dialog open={showPatientForm} onOpenChange={open => { setShowPatientForm(open); if (!open) setEditingPatient(null); }}><DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto"><DialogHeader><DialogTitle>{editingPatient ? "Editar Cliente" : "Cadastrar Cliente"}</DialogTitle></DialogHeader><div className="space-y-6 mt-2"><div><div className="flex items-center gap-2 mb-3"><User className="h-4 w-4 text-primary" /><h3 className="text-sm font-semibold text-foreground">Dados Pessoais</h3></div><div className="grid grid-cols-2 gap-3"><div className="col-span-2"><Label>Nome completo</Label><Input value={patientForm.name} onChange={e => setPatientForm({ ...patientForm, name: e.target.value })} /></div><div><Label>CPF</Label><Input inputMode="numeric" value={patientForm.cpf} onChange={e => setPatientForm({ ...patientForm, cpf: formatCPF(e.target.value) })} /></div><div><Label>Data de nascimento</Label><Input type="date" value={patientForm.birthDate} onChange={e => setPatientForm({ ...patientForm, birthDate: e.target.value })} /></div></div></div><Separator /><div><div className="flex items-center gap-2 mb-3"><Phone className="h-4 w-4 text-primary" /><h3 className="text-sm font-semibold text-foreground">Contato</h3></div><div className="grid grid-cols-2 gap-3"><div><Label>Telefone</Label><Input value={patientForm.phone} onChange={e => setPatientForm({ ...patientForm, phone: e.target.value })} /></div><div><Label>Email</Label><Input value={patientForm.email} onChange={e => setPatientForm({ ...patientForm, email: e.target.value })} /></div><div className="col-span-2"><Label>Endereço</Label><Input value={patientForm.address} onChange={e => setPatientForm({ ...patientForm, address: e.target.value })} /></div></div></div><Separator /><div><div className="flex items-center gap-2 mb-3"><Heart className="h-4 w-4 text-primary" /><h3 className="text-sm font-semibold text-foreground">Informações Clínicas</h3></div><div className="grid grid-cols-2 gap-3"><div><Label>Convênio</Label><Input value={patientForm.insurance} onChange={e => setPatientForm({ ...patientForm, insurance: e.target.value })} /></div><div><Label>Alergias / Alertas</Label><Input value={patientForm.notes} onChange={e => setPatientForm({ ...patientForm, notes: e.target.value })} /></div><div className="col-span-2"><Label>Observações médicas</Label><Textarea rows={3} value={patientForm.medicalNotes} onChange={e => setPatientForm({ ...patientForm, medicalNotes: e.target.value })} /></div></div></div></div><div className="flex justify-end gap-2 mt-6"><Button variant="outline" onClick={() => setShowPatientForm(false)}>Cancelar</Button><Button onClick={savePatient}>{editingPatient ? "Atualizar" : "Salvar"}</Button></div></DialogContent></Dialog>
 
         <Dialog open={!!selectedPatient} onOpenChange={() => setSelectedPatient(null)}><DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto"><DialogHeader><DialogTitle className="flex items-center gap-2"><div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center"><User className="h-4 w-4 text-primary" /></div>{selected?.name}</DialogTitle></DialogHeader>{selected && <Tabs defaultValue="info" className="mt-2"><TabsList className="w-full justify-start"><TabsTrigger value="info">Dados Pessoais</TabsTrigger><TabsTrigger value="history">Atendimentos ({patientHistory.length})</TabsTrigger></TabsList><TabsContent value="info" className="space-y-4 mt-4"><div className="grid grid-cols-2 gap-4 text-sm"><Info label="CPF" value={selected.cpf} /><Info label="Nascimento" value={selected.birthDate ? new Date(selected.birthDate + "T12:00:00").toLocaleDateString("pt-BR") : "-"} /><Info label="Telefone" value={selected.phone} icon={<Phone className="h-3 w-3" />} /><Info label="Email" value={selected.email} icon={<Mail className="h-3 w-3" />} /><Info label="Endereço" value={selected.address} icon={<MapPin className="h-3 w-3" />} wide /><div className="space-y-1"><span className="text-muted-foreground text-xs">Convênio</span><Badge variant="secondary">{selected.insurance}</Badge></div><Info label="Cadastro" value={new Date(selected.createdAt).toLocaleDateString("pt-BR")} /></div>{selected.notes && <div className="p-3 rounded-lg bg-warning/10 text-warning text-sm">⚠ {selected.notes}</div>}{selected.medicalNotes && <div className="p-3 rounded-lg bg-primary/5 text-sm"><p className="font-semibold text-xs mb-1 text-muted-foreground">Observações médicas</p>{selected.medicalNotes}</div>}</TabsContent><TabsContent value="history" className="mt-4 space-y-2">{patientHistory.length === 0 ? <p className="text-sm text-muted-foreground text-center py-8">Nenhum atendimento registrado</p> : patientHistory.map(apt => <div key={apt.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50"><div className="flex items-center gap-3"><Calendar className="h-4 w-4 text-muted-foreground" /><div><p className="text-sm font-medium">{apt.procedure_name}</p><p className="text-xs text-muted-foreground">{new Date(apt.appointment_date + "T12:00:00").toLocaleDateString("pt-BR")} • {apt.appointment_time?.slice(0, 5)} • {apt.professional_name}</p></div></div><Badge className={`${statusBadge[apt.status]} border-0`}>{statusLabels[apt.status]}</Badge></div>)}</TabsContent></Tabs>}</DialogContent></Dialog>
 
@@ -318,7 +344,7 @@ export default function RegistrationsPage() {
 
         <Dialog open={showCatForm} onOpenChange={open => { setShowCatForm(open); if (!open) setEditingCat(null); }}><DialogContent className="max-w-sm"><DialogHeader><DialogTitle>{editingCat ? "Editar Categoria" : "Nova Categoria"}</DialogTitle></DialogHeader><div className="space-y-3 mt-2"><div><Label>Nome da categoria</Label><Input value={catForm.name} onChange={e => setCatForm({ ...catForm, name: e.target.value })} /></div><div><Label>Tipo</Label><Select value={catForm.type} onValueChange={(type: "income" | "expense") => setCatForm({ ...catForm, type })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="expense">Despesa</SelectItem><SelectItem value="income">Receita</SelectItem></SelectContent></Select></div></div><div className="flex justify-end gap-2 mt-4"><Button variant="outline" onClick={() => setShowCatForm(false)}>Cancelar</Button><Button onClick={saveCategory}>{editingCat ? "Atualizar" : "Salvar"}</Button></div></DialogContent></Dialog>
 
-        <ConfirmDialog open={!!deletePatientId} onOpenChange={() => setDeletePatientId(null)} title="Excluir Paciente" description="Tem certeza que deseja excluir este paciente?" onConfirm={() => deletePatientId && removeRecord("patients", deletePatientId, () => { setPatients(prev => prev.filter(p => p.id !== deletePatientId)); setDeletePatientId(null); }, "Paciente")} />
+        <ConfirmDialog open={!!deletePatientId} onOpenChange={() => setDeletePatientId(null)} title="Excluir Cliente" description="Tem certeza que deseja excluir este cliente?" onConfirm={() => deletePatientId && removeRecord("patients", deletePatientId, () => { setPatients(prev => prev.filter(p => p.id !== deletePatientId)); setDeletePatientId(null); }, "Cliente")} />
         <ConfirmDialog open={!!deleteProcId} onOpenChange={() => setDeleteProcId(null)} title="Excluir Procedimento" description="Tem certeza que deseja excluir este procedimento?" onConfirm={() => deleteProcId && removeRecord("procedures", deleteProcId, () => { setProcedures(prev => prev.filter(p => p.id !== deleteProcId)); setDeleteProcId(null); }, "Procedimento")} />
         <ConfirmDialog open={!!deleteSupplierId} onOpenChange={() => setDeleteSupplierId(null)} title="Excluir Fornecedor" description="Tem certeza que deseja excluir este fornecedor?" onConfirm={() => deleteSupplierId && removeRecord("suppliers", deleteSupplierId, () => { setSuppliers(prev => prev.filter(s => s.id !== deleteSupplierId)); setDeleteSupplierId(null); }, "Fornecedor")} />
         <ConfirmDialog open={!!deleteCatId} onOpenChange={() => setDeleteCatId(null)} title="Excluir Categoria" description="Tem certeza que deseja excluir esta categoria?" onConfirm={() => deleteCatId && removeRecord("financial_categories", deleteCatId, () => { setCategories(prev => prev.filter(c => c.id !== deleteCatId)); setDeleteCatId(null); }, "Categoria")} />

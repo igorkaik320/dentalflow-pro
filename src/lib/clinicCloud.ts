@@ -196,11 +196,15 @@ export async function ensureClinicForUser(user: { id: string; email?: string | n
   return clinic as CloudClinic;
 }
 
-export async function uploadClinicLogo(userId: string, file: File) {
+export async function uploadClinicLogo(clinicId: string, file: File) {
   const extension = file.name.split(".").pop() || "png";
-  const safeName = `${Date.now()}.${extension.toLowerCase()}`;
-  const path = `${userId}/${safeName}`;
-  const { error } = await supabase.storage.from("clinic-logos").upload(path, file, { upsert: true });
+  const safeName = `logo-${Date.now()}.${extension.toLowerCase()}`;
+  const path = `${clinicId}/${safeName}`;
+  const { error } = await supabase.storage.from("clinic-logos").upload(path, file, {
+    cacheControl: "3600",
+    contentType: file.type || undefined,
+    upsert: true,
+  });
   if (error) throw error;
   const { data } = supabase.storage.from("clinic-logos").getPublicUrl(path);
   return data.publicUrl;
