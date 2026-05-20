@@ -205,7 +205,41 @@ export async function uploadClinicLogo(clinicId: string, file: File) {
     contentType: file.type || undefined,
     upsert: true,
   });
-  if (error) throw error;
+  if (error) {
+    console.warn("Logo storage upload failed, falling back to inline logo.", error);
+    return resizeLogoToDataUrl(file);
+  }
   const { data } = supabase.storage.from("clinic-logos").getPublicUrl(path);
   return data.publicUrl;
+}
+
+function readImage(file: File) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("invalid_logo_image"));
+    };
+    image.src = url;
+  });
+}
+
+async function resizeLogoToDataUrl(file: File) {
+  const image = await readImage(file);
+  const maxSize = 512;
+  const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
+  const width = Math.max(1, Math.round(image.width * scale));
+  const height = Math.max(1, Math.round(image.height * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("logo_canvas_unavailable");
+  context.drawImage(image, 0, 0, width, height);
+  return canvas.toDataURL("image/png");
 }
