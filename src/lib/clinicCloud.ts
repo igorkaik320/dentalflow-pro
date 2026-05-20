@@ -22,6 +22,8 @@ export interface CloudClinic {
   logo_url: string | null;
 }
 
+const lockedClinicId = "8c37c1f5-2975-4b80-a055-cb46437a42a9";
+
 function normalizeDate(value?: string) {
   return value || new Date().toISOString().split("T")[0];
 }
@@ -153,6 +155,15 @@ export async function ensureClinicForUser(user: { id: string; email?: string | n
     email: user.email || null,
     full_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email || "Usuário",
   }, { onConflict: "user_id" });
+
+  const { data: lockedClinic, error: lockedClinicError } = await db
+    .from("clinics")
+    .select("id, name, cnpj, phone, email, address, logo_url")
+    .eq("id", lockedClinicId)
+    .maybeSingle();
+  if (lockedClinicError) throw lockedClinicError;
+  if (!lockedClinic) throw new Error("Usuario sem acesso a clinica Virtuosa.");
+  return lockedClinic as CloudClinic;
 
   const { data: membership, error: memberError } = await db
     .from("clinic_members")
