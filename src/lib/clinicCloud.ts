@@ -22,7 +22,7 @@ export interface CloudClinic {
   logo_url: string | null;
 }
 
-const lockedClinicId = "8c37c1f5-2975-4b80-a055-cb46437a42a9";
+const lockedClinicId = "310d3829-d256-4906-a5c8-0faa7836c7e3";
 
 function normalizeDate(value?: string) {
   return value || new Date().toISOString().split("T")[0];
