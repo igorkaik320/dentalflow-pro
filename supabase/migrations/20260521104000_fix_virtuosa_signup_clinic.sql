@@ -60,6 +60,43 @@ AFTER INSERT ON auth.users
 FOR EACH ROW
 EXECUTE FUNCTION public.create_virtuosa_signup_request();
 
+INSERT INTO public.profiles (
+  user_id,
+  email,
+  full_name,
+  job_title,
+  password_setup_required
+)
+SELECT
+  u.id,
+  u.email,
+  COALESCE(u.raw_user_meta_data->>'full_name', u.raw_user_meta_data->>'name', u.email, 'Usuario'),
+  'reception',
+  false
+FROM auth.users u
+WHERE u.email IS NOT NULL
+ON CONFLICT (user_id)
+DO UPDATE SET
+  email = EXCLUDED.email,
+  full_name = COALESCE(public.profiles.full_name, EXCLUDED.full_name),
+  updated_at = now();
+
+INSERT INTO public.clinic_members (
+  clinic_id,
+  user_id,
+  role,
+  active
+)
+SELECT
+  '310d3829-d256-4906-a5c8-0faa7836c7e3'::uuid,
+  u.id,
+  'reception',
+  false
+FROM auth.users u
+WHERE u.email IS NOT NULL
+ON CONFLICT (clinic_id, user_id)
+DO NOTHING;
+
 DROP POLICY IF EXISTS "Members can view fellow member profiles" ON public.profiles;
 CREATE POLICY "Members can view fellow member profiles"
 ON public.profiles
