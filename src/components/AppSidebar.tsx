@@ -2,6 +2,7 @@ import {
   LayoutDashboard,
   Calendar,
   DollarSign,
+  FileText,
   Settings,
   Activity,
   ClipboardList,
@@ -33,6 +34,7 @@ const mainItems = [
 
 const financeItems = [
   { title: "Financeiro", url: "/financeiro", icon: DollarSign },
+  { title: "Parcelas", url: "/financeiro/parcelas", icon: FileText },
 ];
 
 const systemItems = [
@@ -43,7 +45,7 @@ const systemItems = [
 function ClinicLogo({ logoUrl }: { logoUrl: string | null }) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   if (logoUrl && logoUrl !== failedUrl) {
-    return <img src={logoUrl} alt="Logo" className="h-full w-full rounded object-contain p-1" onError={() => setFailedUrl(logoUrl)} />;
+    return <img src={logoUrl} alt="Logo" className="h-full w-full rounded-md object-cover" onError={() => setFailedUrl(logoUrl)} />;
   }
   return <Activity className="h-4 w-4 text-sidebar-primary-foreground" />;
 }
@@ -54,13 +56,13 @@ export function AppSidebar() {
   const location = useLocation();
   const { clinic } = useClinic();
   const isActive = (path: string) =>
-    path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
+    path === "/" || path === "/financeiro" ? location.pathname === path : location.pathname.startsWith(path);
 
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className={`border-b border-sidebar-border py-3 ${collapsed ? "px-2" : "px-3"}`}>
         <div className={`flex items-center gap-2.5 overflow-hidden ${collapsed ? "justify-center" : ""}`}>
-          <div className="h-8 w-8 rounded-lg bg-sidebar-primary flex items-center justify-center shrink-0">
+          <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 overflow-hidden ${clinic.logoUrl ? "bg-white" : "bg-sidebar-primary"}`}>
             <ClinicLogo logoUrl={clinic.logoUrl} />
           </div>
           {!collapsed && (

@@ -8,6 +8,7 @@ import { AuthGate } from "@/components/AuthGate";
 import DashboardPage from "./pages/DashboardPage";
 import AgendaPage from "./pages/AgendaPage";
 import FinancialPage from "./pages/FinancialPage";
+import PayableInstallmentsPage from "./pages/PayableInstallmentsPage";
 import SettingsPage from "./pages/SettingsPage";
 import SecurityPage from "./pages/SecurityPage";
 import RegistrationsPage from "./pages/RegistrationsPage";
@@ -36,6 +37,7 @@ const App = () => (
               <Route path="/agenda" element={<AgendaPage />} />
               <Route path="/cadastros" element={<RegistrationsPage />} />
               <Route path="/financeiro" element={<FinancialPage />} />
+              <Route path="/financeiro/parcelas" element={<PayableInstallmentsPage />} />
               <Route path="/configuracoes" element={<SettingsPage />} />
               <Route path="/seguranca" element={<SecurityPage />} />
               <Route path="*" element={<NotFound />} />
