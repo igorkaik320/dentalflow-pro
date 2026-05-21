@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState, ReactNode } fr
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { ensureClinicForUser, type CloudClinic } from "@/lib/clinicCloud";
+import { buildRolePermissions, mergePermissionRows, type AppRole, type PermissionAction, type PermissionMap, type PermissionModule } from "@/lib/permissions";
 
 type ClinicInfo = {
   id: string | null;
@@ -17,6 +18,9 @@ type ClinicContextType = {
   clinic: ClinicInfo;
   setClinic: (info: Partial<ClinicInfo>) => void;
   refreshClinic: () => Promise<void>;
+  memberRole: AppRole | null;
+  permissions: PermissionMap;
+  can: (module: PermissionModule, action?: PermissionAction) => boolean;
   session: Session | null;
   user: User | null;
   loading: boolean;
@@ -50,6 +54,8 @@ function mapClinic(clinic: CloudClinic): ClinicInfo {
 
 export function ClinicProvider({ children }: { children: ReactNode }) {
   const [clinic, setClinicState] = useState<ClinicInfo>(fallbackClinic);
+  const [memberRole, setMemberRole] = useState<AppRole | null>(null);
+  const [permissions, setPermissions] = useState<PermissionMap>(buildRolePermissions(null));
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [accessError, setAccessError] = useState<string | null>(null);
@@ -58,14 +64,37 @@ export function ClinicProvider({ children }: { children: ReactNode }) {
     setAccessError(null);
     if (!currentSession?.user) {
       setClinicState(fallbackClinic);
+      setMemberRole(null);
+      setPermissions(buildRolePermissions(null));
       return;
     }
 
     try {
       const cloudClinic = await ensureClinicForUser(currentSession.user);
       setClinicState(mapClinic(cloudClinic));
+      const { data: member } = await supabase
+        .from("clinic_members")
+        .select("id, role")
+        .eq("clinic_id", cloudClinic.id)
+        .eq("user_id", currentSession.user.id)
+        .maybeSingle();
+      const role = (member?.role || null) as AppRole | null;
+      setMemberRole(role);
+
+      let permissionRows: any[] = [];
+      if (member?.id) {
+        const { data } = await supabase
+          .from("clinic_member_permissions")
+          .select("module, can_view, can_create, can_update, can_delete")
+          .eq("clinic_id", cloudClinic.id)
+          .eq("member_id", member.id);
+        permissionRows = data || [];
+      }
+      setPermissions(mergePermissionRows(role, permissionRows));
     } catch (error) {
       setClinicState(fallbackClinic);
+      setMemberRole(null);
+      setPermissions(buildRolePermissions(null));
       setAccessError((error as Error).message || "Acesso pendente de aprovacao.");
     }
   };
@@ -109,6 +138,9 @@ export function ClinicProvider({ children }: { children: ReactNode }) {
     clinic,
     setClinic: (info) => setClinicState((prev) => ({ ...prev, ...info })),
     refreshClinic: async () => loadClinic(session),
+    memberRole,
+    permissions,
+    can: (module, action = "view") => memberRole === "admin" || Boolean(permissions[module]?.[action]),
     session,
     user: session?.user || null,
     loading,
@@ -117,9 +149,11 @@ export function ClinicProvider({ children }: { children: ReactNode }) {
       await supabase.auth.signOut();
       setSession(null);
       setClinicState(fallbackClinic);
+      setMemberRole(null);
+      setPermissions(buildRolePermissions(null));
       setAccessError(null);
     },
-  }), [clinic, session, loading, accessError]);
+  }), [clinic, session, loading, accessError, memberRole, permissions]);
 
   return <ClinicContext.Provider value={value}>{children}</ClinicContext.Provider>;
 }

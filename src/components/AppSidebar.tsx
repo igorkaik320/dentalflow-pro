@@ -7,6 +7,7 @@ import {
   Activity,
   ClipboardList,
   Lock,
+  Boxes,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -25,21 +26,23 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useState } from "react";
+import type { PermissionModule } from "@/lib/permissions";
 
 const mainItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Agenda", url: "/agenda", icon: Calendar },
-  { title: "Cadastros", url: "/cadastros", icon: ClipboardList },
+  { title: "Dashboard", url: "/", icon: LayoutDashboard, module: "dashboard" },
+  { title: "Agenda", url: "/agenda", icon: Calendar, module: "agenda" },
+  { title: "Cadastros", url: "/cadastros", icon: ClipboardList, module: "registrations" },
+  { title: "Patrimonio", url: "/patrimonio", icon: Boxes, module: "patrimony" },
 ];
 
 const financeItems = [
-  { title: "Financeiro", url: "/financeiro", icon: DollarSign },
-  { title: "Parcelas", url: "/financeiro/parcelas", icon: FileText },
+  { title: "Financeiro", url: "/financeiro", icon: DollarSign, module: "financial" },
+  { title: "Parcelas", url: "/financeiro/parcelas", icon: FileText, module: "payable_installments" },
 ];
 
 const systemItems = [
-  { title: "Configuracoes", url: "/configuracoes", icon: Settings },
-  { title: "Seguranca", url: "/seguranca", icon: Lock },
+  { title: "Configuracoes", url: "/configuracoes", icon: Settings, module: "settings" },
+  { title: "Seguranca", url: "/seguranca", icon: Lock, module: "security" },
 ];
 
 function ClinicLogo({ logoUrl }: { logoUrl: string | null }) {
@@ -54,9 +57,12 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
-  const { clinic } = useClinic();
+  const { clinic, can } = useClinic();
   const isActive = (path: string) =>
     path === "/" || path === "/financeiro" ? location.pathname === path : location.pathname.startsWith(path);
+  const visibleMainItems = mainItems.filter((item) => can(item.module as PermissionModule));
+  const visibleFinanceItems = financeItems.filter((item) => can(item.module as PermissionModule));
+  const visibleSystemItems = systemItems.filter((item) => can(item.module as PermissionModule));
 
   return (
     <Sidebar collapsible="icon">
@@ -80,7 +86,7 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainItems.map((item) => (
+              {visibleMainItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={isActive(item.url)}>
                     <NavLink to={item.url} end={item.url === "/"}>
@@ -100,7 +106,7 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {financeItems.map((item) => (
+              {visibleFinanceItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={isActive(item.url)}>
                     <NavLink to={item.url}>
@@ -120,7 +126,7 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {systemItems.map((item) => (
+              {visibleSystemItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={isActive(item.url)}>
                     <NavLink to={item.url}>
