@@ -187,10 +187,16 @@ export default function SecurityPage() {
       can_delete: nextModule.delete,
     };
 
-    const { error } = await db
-      .from("clinic_member_permissions")
-      .upsert(payload, { onConflict: "member_id,module" });
-    if (error) return toast.error("Nao foi possivel atualizar a permissao.");
+    const { error } = await db.rpc("set_clinic_member_permission", {
+      _clinic_id: payload.clinic_id,
+      _member_id: payload.member_id,
+      _module: payload.module,
+      _can_view: payload.can_view,
+      _can_create: payload.can_create,
+      _can_update: payload.can_update,
+      _can_delete: payload.can_delete,
+    });
+    if (error) return toast.error(error.message || "Nao foi possivel atualizar a permissao.");
 
     setMembers((prev) => prev.map((item) => item.id === member.id ? {
       ...item,
