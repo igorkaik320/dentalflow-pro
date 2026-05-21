@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
 import { useClinic } from "@/contexts/ClinicContext";
 import { db } from "@/lib/clinicCloud";
 import { toast } from "sonner";
@@ -114,14 +115,12 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   const handleGoogle = async () => {
     setSubmitting(true);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/`,
-      },
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: `${window.location.origin}/`,
     });
+    if (result.redirected) return;
     setSubmitting(false);
-    if (error) toast.error(error.message || "Nao foi possivel iniciar o login com Google.");
+    if (result.error) toast.error(result.error.message || "Nao foi possivel iniciar o login com Google.");
   };
 
   if (session && passwordSetupMode) {
