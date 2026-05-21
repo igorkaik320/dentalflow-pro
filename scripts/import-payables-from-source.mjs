@@ -67,8 +67,6 @@ async function upsertSuppliers(sourceSuppliers) {
     bank: nullable(supplier.banco),
     agency: nullable(supplier.agencia),
     account: nullable(supplier.conta),
-    created_at: supplier.created_at || undefined,
-    updated_at: supplier.updated_at || undefined,
   }));
 
   const { error } = await target
@@ -105,8 +103,6 @@ async function upsertPayables(sourcePayables, supplierMap) {
     company_id: nullable(payable.empresa_id),
     company_name: nullable(payable.empresa_nome),
     source_notes: nullable(payable.observacao),
-    created_at: payable.created_at || undefined,
-    updated_at: payable.updated_at || undefined,
   }));
 
   const { error } = await target
@@ -139,8 +135,6 @@ async function upsertInstallments(sourceInstallments, payableMap) {
       paid_amount: installment.valor_pago == null ? null : asNumber(installment.valor_pago),
       status: normalizeStatus(installment.status, installment.data_vencimento),
       notes: nullable(installment.observacao),
-      created_at: installment.created_at || undefined,
-      updated_at: installment.updated_at || undefined,
     }));
 
   const { error } = await target
