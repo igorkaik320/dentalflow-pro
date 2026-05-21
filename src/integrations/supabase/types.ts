@@ -714,6 +714,8 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          job_title: string | null
+          password_setup_required: boolean
           updated_at: string
           user_id: string
         }
@@ -722,6 +724,8 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          job_title?: string | null
+          password_setup_required?: boolean
           updated_at?: string
           user_id: string
         }
@@ -730,6 +734,8 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          job_title?: string | null
+          password_setup_required?: boolean
           updated_at?: string
           user_id?: string
         }
