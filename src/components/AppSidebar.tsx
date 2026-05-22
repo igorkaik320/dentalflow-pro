@@ -60,9 +60,6 @@ export function AppSidebar() {
   const { clinic, can } = useClinic();
   const isActive = (path: string) =>
     path === "/" || path === "/financeiro" ? location.pathname === path : location.pathname.startsWith(path);
-  const visibleMainItems = mainItems.filter((item) => can(item.module as PermissionModule));
-  const visibleFinanceItems = financeItems.filter((item) => can(item.module as PermissionModule));
-  const visibleSystemItems = systemItems.filter((item) => can(item.module as PermissionModule));
 
   return (
     <Sidebar collapsible="icon">
@@ -86,16 +83,20 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {visibleMainItems.map((item) => (
+              {mainItems.map((item) => {
+                const allowed = can(item.module as PermissionModule);
+                return (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <NavLink to={item.url} end={item.url === "/"}>
+                    <NavLink to={item.url} end={item.url === "/"} className={!allowed ? "opacity-60" : ""}>
                       <item.icon className="h-4 w-4" />
                       {!collapsed && <span>{item.title}</span>}
+                      {!collapsed && !allowed && <Lock className="ml-auto h-3.5 w-3.5" />}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-              ))}
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -106,16 +107,20 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {visibleFinanceItems.map((item) => (
+              {financeItems.map((item) => {
+                const allowed = can(item.module as PermissionModule);
+                return (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <NavLink to={item.url}>
+                    <NavLink to={item.url} className={!allowed ? "opacity-60" : ""}>
                       <item.icon className="h-4 w-4" />
                       {!collapsed && <span>{item.title}</span>}
+                      {!collapsed && !allowed && <Lock className="ml-auto h-3.5 w-3.5" />}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-              ))}
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -126,16 +131,20 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {visibleSystemItems.map((item) => (
+              {systemItems.map((item) => {
+                const allowed = can(item.module as PermissionModule);
+                return (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <NavLink to={item.url}>
+                    <NavLink to={item.url} className={!allowed ? "opacity-60" : ""}>
                       <item.icon className="h-4 w-4" />
                       {!collapsed && <span>{item.title}</span>}
+                      {!collapsed && !allowed && <Lock className="ml-auto h-3.5 w-3.5" />}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-              ))}
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

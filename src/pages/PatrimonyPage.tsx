@@ -29,10 +29,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { useClinic } from "@/contexts/ClinicContext";
 import { db } from "@/lib/clinicCloud";
 import { supabase } from "@/integrations/supabase/client";
+import { formatCurrency, parseCurrencyInput } from "@/lib/utils";
 
 type PatrimonyStatus = "Otimo" | "Bom" | "Regular" | "Danificado" | "Descartado";
 type ViewMode = "grid" | "list";
-type SortKey = "name" | "environment" | "quantity" | "color" | "supplier" | "status" | "created_at";
+type SortKey = "name" | "environment" | "quantity" | "value" | "color" | "supplier" | "status" | "created_at";
 
 type PatrimonyItem = {
   id: string;
@@ -40,6 +41,7 @@ type PatrimonyItem = {
   environment: string;
   name: string;
   quantity: number;
+  value: number;
   color: string | null;
   supplier: string | null;
   model: string | null;
@@ -54,6 +56,7 @@ type PatrimonyForm = {
   environment: string;
   name: string;
   quantity: string;
+  value: string;
   color: string;
   supplier: string;
   model: string;
@@ -104,6 +107,7 @@ const blankForm: PatrimonyForm = {
   environment: environments[0],
   name: "",
   quantity: "1",
+  value: "",
   color: "",
   supplier: "",
   model: "",
@@ -134,6 +138,7 @@ function toForm(item: PatrimonyItem): PatrimonyForm {
     environment: item.environment || environments[0],
     name: item.name || "",
     quantity: String(item.quantity || 1),
+    value: item.value ? formatCurrency(Number(item.value)) : "",
     color: item.color || "",
     supplier: item.supplier || "",
     model: item.model || "",
@@ -267,12 +272,14 @@ export default function PatrimonyPage() {
 
   const summary = useMemo(() => {
     const totalQuantity = visibleItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+    const totalValue = visibleItems.reduce((sum, item) => sum + Number(item.value || 0), 0);
     const damaged = visibleItems.filter((item) => item.status === "Danificado").length;
     const discarded = visibleItems.filter((item) => item.status === "Descartado").length;
-    return { totalQuantity, damaged, discarded };
+    return { totalQuantity, totalValue, damaged, discarded };
   }, [visibleItems]);
 
   const reportTotal = useMemo(() => reportItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0), [reportItems]);
+  const reportValueTotal = useMemo(() => reportItems.reduce((sum, item) => sum + Number(item.value || 0), 0), [reportItems]);
 
   const openNewForm = () => {
     if (!canCreate) return toast.error("Voce nao tem permissao para criar patrimonio.");
@@ -305,6 +312,7 @@ export default function PatrimonyPage() {
     if (!form.name.trim()) return toast.error("Informe o nome do item.");
     if (!form.environment) return toast.error("Informe o ambiente.");
     const quantity = Math.max(0, Number.parseInt(form.quantity, 10) || 0);
+    const value = parseCurrencyInput(form.value);
     setSaving(true);
     try {
       const photoUrl = photoFile ? await uploadPhoto(clinic.id, photoFile) : form.photo_url || null;
@@ -313,6 +321,7 @@ export default function PatrimonyPage() {
         environment: form.environment,
         name: form.name.trim(),
         quantity,
+        value,
         color: form.color.trim() || null,
         supplier: form.supplier.trim() || null,
         model: form.model.trim() || null,
@@ -405,7 +414,7 @@ export default function PatrimonyPage() {
   return (
     <ClinicLayout title="Patrimônio" subtitle="Controle de móveis, equipamentos e objetos da clínica">
       <div className="space-y-5 animate-fade-in">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <Card className="stat-card">
             <p className="text-xs text-muted-foreground">Itens cadastrados</p>
             <p className="text-2xl font-bold mt-1">{totalCount}</p>
@@ -413,6 +422,10 @@ export default function PatrimonyPage() {
           <Card className="stat-card">
             <p className="text-xs text-muted-foreground">Unidades nesta página</p>
             <p className="text-2xl font-bold mt-1">{summary.totalQuantity}</p>
+          </Card>
+          <Card className="stat-card">
+            <p className="text-xs text-muted-foreground">Valor nesta página</p>
+            <p className="text-2xl font-bold mt-1">{formatCurrency(summary.totalValue)}</p>
           </Card>
           <Card className="stat-card">
             <p className="text-xs text-muted-foreground">Danificados na página</p>
@@ -487,8 +500,9 @@ export default function PatrimonyPage() {
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
                     <div><span className="text-muted-foreground">Qtd.</span><p className="font-medium">{item.quantity}</p></div>
+                    <div><span className="text-muted-foreground">Valor</span><p className="font-medium truncate">{formatCurrency(Number(item.value || 0))}</p></div>
                     <div><span className="text-muted-foreground">Cor</span><p className="font-medium truncate">{item.color || "-"}</p></div>
-                    <div className="col-span-2"><span className="text-muted-foreground">Fornecedor</span><p className="font-medium truncate">{item.supplier || "-"}</p></div>
+                    <div><span className="text-muted-foreground">Fornecedor</span><p className="font-medium truncate">{item.supplier || "-"}</p></div>
                   </div>
                   <div className="mt-4 flex justify-end gap-2">
                     <Button variant="outline" size="icon" onClick={() => setDetailItem(item)} title="Detalhes"><Eye className="h-4 w-4" /></Button>
@@ -511,6 +525,7 @@ export default function PatrimonyPage() {
                       ["name", "Nome"],
                       ["environment", "Ambiente"],
                       ["quantity", "Qtd."],
+                      ["value", "Valor"],
                       ["color", "Cor"],
                       ["supplier", "Fornecedor"],
                       ["status", "Status"],
@@ -535,6 +550,7 @@ export default function PatrimonyPage() {
                       <TableCell className="font-medium">{item.name}</TableCell>
                       <TableCell>{item.environment}</TableCell>
                       <TableCell>{item.quantity}</TableCell>
+                      <TableCell>{formatCurrency(Number(item.value || 0))}</TableCell>
                       <TableCell>{item.color || "-"}</TableCell>
                       <TableCell>{item.supplier || "-"}</TableCell>
                       <TableCell><Badge className={statusClass(item.status)}>{statusLabel(item.status)}</Badge></TableCell>
@@ -611,6 +627,7 @@ export default function PatrimonyPage() {
                 <div className="text-sm md:text-right text-slate-600">
                   <p>{reportItems.length} item{reportItems.length === 1 ? "" : "s"}</p>
                   <p>Quantidade total: {reportTotal}</p>
+                  <p>Valor total: {formatCurrency(reportValueTotal)}</p>
                 </div>
               </div>
               <Table>
@@ -618,6 +635,7 @@ export default function PatrimonyPage() {
                   <TableRow>
                     <TableHead>Item</TableHead>
                     <TableHead>Qtd.</TableHead>
+                    <TableHead>Valor</TableHead>
                     <TableHead>Cor</TableHead>
                     <TableHead>Fornecedor</TableHead>
                     <TableHead>Modelo</TableHead>
@@ -629,6 +647,7 @@ export default function PatrimonyPage() {
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">{item.name}</TableCell>
                       <TableCell>{item.quantity}</TableCell>
+                      <TableCell>{formatCurrency(Number(item.value || 0))}</TableCell>
                       <TableCell>{item.color || "-"}</TableCell>
                       <TableCell>{item.supplier || "-"}</TableCell>
                       <TableCell>{item.model || "-"}</TableCell>
@@ -675,6 +694,14 @@ export default function PatrimonyPage() {
                 <div>
                   <Label>Quantidade</Label>
                   <Input type="number" min="0" value={form.quantity} onChange={(event) => setForm({ ...form, quantity: event.target.value })} />
+                </div>
+                <div>
+                  <Label>Valor</Label>
+                  <Input
+                    value={form.value}
+                    onChange={(event) => setForm({ ...form, value: formatCurrency(parseCurrencyInput(event.target.value)) })}
+                    placeholder="R$ 0,00"
+                  />
                 </div>
                 <div>
                   <Label>Cor</Label>
@@ -739,6 +766,7 @@ export default function PatrimonyPage() {
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
                       <div><p className="text-xs text-muted-foreground">Quantidade</p><p className="font-medium">{detailItem.quantity}</p></div>
+                      <div><p className="text-xs text-muted-foreground">Valor</p><p className="font-medium">{formatCurrency(Number(detailItem.value || 0))}</p></div>
                       <div><p className="text-xs text-muted-foreground">Cor</p><p className="font-medium">{detailItem.color || "-"}</p></div>
                       <div><p className="text-xs text-muted-foreground">Fornecedor</p><p className="font-medium">{detailItem.supplier || "-"}</p></div>
                       <div><p className="text-xs text-muted-foreground">Modelo</p><p className="font-medium">{detailItem.model || "-"}</p></div>
