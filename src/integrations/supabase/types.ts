@@ -191,6 +191,60 @@ export type Database = {
           },
         ]
       }
+      clinic_member_permissions: {
+        Row: {
+          can_create: boolean
+          can_delete: boolean
+          can_update: boolean
+          can_view: boolean
+          clinic_id: string
+          created_at: string
+          id: string
+          member_id: string
+          module: string
+          updated_at: string
+        }
+        Insert: {
+          can_create?: boolean
+          can_delete?: boolean
+          can_update?: boolean
+          can_view?: boolean
+          clinic_id: string
+          created_at?: string
+          id?: string
+          member_id: string
+          module: string
+          updated_at?: string
+        }
+        Update: {
+          can_create?: boolean
+          can_delete?: boolean
+          can_update?: boolean
+          can_view?: boolean
+          clinic_id?: string
+          created_at?: string
+          id?: string
+          member_id?: string
+          module?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinic_member_permissions_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinic_member_permissions_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "clinic_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinic_members: {
         Row: {
           active: boolean
@@ -469,6 +523,71 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "patients_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patrimonies: {
+        Row: {
+          clinic_id: string
+          color: string | null
+          created_at: string
+          description: string | null
+          environment: string
+          id: string
+          model: string | null
+          name: string
+          photo_url: string | null
+          quantity: number
+          source_row: number | null
+          source_sheet: string | null
+          status: string
+          supplier: string | null
+          updated_at: string
+          value: number
+        }
+        Insert: {
+          clinic_id: string
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          environment: string
+          id?: string
+          model?: string | null
+          name: string
+          photo_url?: string | null
+          quantity?: number
+          source_row?: number | null
+          source_sheet?: string | null
+          status?: string
+          supplier?: string | null
+          updated_at?: string
+          value?: number
+        }
+        Update: {
+          clinic_id?: string
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          environment?: string
+          id?: string
+          model?: string | null
+          name?: string
+          photo_url?: string | null
+          quantity?: number
+          source_row?: number | null
+          source_sheet?: string | null
+          status?: string
+          supplier?: string | null
+          updated_at?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patrimonies_clinic_id_fkey"
             columns: ["clinic_id"]
             isOneToOne: false
             referencedRelation: "clinics"
@@ -912,6 +1031,18 @@ export type Database = {
         Returns: boolean
       }
       is_clinic_member: { Args: { _clinic_id: string }; Returns: boolean }
+      set_clinic_member_permission: {
+        Args: {
+          _can_create: boolean
+          _can_delete: boolean
+          _can_update: boolean
+          _can_view: boolean
+          _clinic_id: string
+          _member_id: string
+          _module: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "reception" | "dentist" | "finance"
@@ -930,12 +1061,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -959,11 +1090,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -984,11 +1115,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1009,11 +1140,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1026,11 +1157,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
