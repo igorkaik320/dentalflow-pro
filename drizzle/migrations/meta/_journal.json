@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1790081841774,
+      "tag": "0000_enhance_audit_logging",
+      "breakpoints": true
+    }
+  ]
+}
