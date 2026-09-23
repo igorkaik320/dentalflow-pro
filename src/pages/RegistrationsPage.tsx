@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useClinic } from "@/contexts/ClinicContext";
 import { clearPersistentState, usePersistentState } from "@/hooks/usePersistentState";
@@ -38,7 +39,7 @@ type PatientHistoryRow = {
 
 const emptyPatient: PatientForm = { name: "", cpf: "", birthDate: "", phone: "", email: "", address: "", notes: "", medicalNotes: "", insurance: "Particular" };
 const emptyProcedure: ProcedureForm = { name: "", defaultPrice: 0, averageDuration: 30 };
-const emptySupplier: SupplierForm = { name: "", legalName: "", cnpj: "", document: "", phone: "", mobile: "", email: "", category: "", notes: "", bank: "", agency: "", account: "" };
+const emptySupplier: SupplierForm = { name: "", legalName: "", cnpj: "", document: "", phone: "", mobile: "", email: "", category: "", notes: "", bank: "", agency: "", account: "", isCollaborator: false };
 const emptyCategory: CategoryForm = { name: "", type: "expense" };
 const storageKeys = {
   activeTab: "dentalflow.registrations.activeTab",
@@ -97,11 +98,16 @@ function mapSupplier(row: any): Supplier {
     bank: row.bank || "",
     agency: row.agency || "",
     account: row.account || "",
+    isCollaborator: Boolean(row.is_collaborator),
   };
 }
 
 function mapCategory(row: any): FinancialCategory {
   return { id: row.id, name: row.name || "", type: row.type || "expense" };
+}
+
+function sortCategories(list: FinancialCategory[]) {
+  return [...list].sort((a, b) => (a.type === b.type ? a.name.localeCompare(b.name) : a.type === "income" ? -1 : 1));
 }
 
 export default function RegistrationsPage() {
@@ -170,7 +176,7 @@ export default function RegistrationsPage() {
       db.from("patients").select("*").eq("clinic_id", clinic.id).order("created_at", { ascending: false }),
       db.from("procedures").select("*").eq("clinic_id", clinic.id).order("name"),
       db.from("suppliers").select("*").eq("clinic_id", clinic.id).order("name"),
-      db.from("financial_categories").select("*").eq("clinic_id", clinic.id).order("type").order("name"),
+      db.from("financial_categories").select("*").eq("clinic_id", clinic.id).order("type", { ascending: false }).order("name"),
     ]);
 
     setLoading(false);
@@ -183,7 +189,7 @@ export default function RegistrationsPage() {
     setPatients((patientRes.data || []).map(mapPatient));
     setProcedures((procRes.data || []).map(mapProcedure));
     setSuppliers((supplierRes.data || []).map(mapSupplier));
-    setCategories((catRes.data || []).map(mapCategory));
+    setCategories(sortCategories((catRes.data || []).map(mapCategory)));
   };
 
   const openPatient = (patient?: Patient) => {
@@ -243,7 +249,7 @@ export default function RegistrationsPage() {
 
   const saveSupplier = async () => {
     if (!clinic.id) return toast.error("Clínica não vinculada. Verifique o cadastro da clínica atualizados.");
-    if (!supplierForm.name.trim()) return toast.error("Informe o nome do fornecedor.");
+    if (!supplierForm.name.trim()) return toast.error("Informe o nome do credor.");
     const payload = {
       clinic_id: clinic.id,
       name: supplierForm.name.trim(),
@@ -258,15 +264,16 @@ export default function RegistrationsPage() {
       bank: supplierForm.bank,
       agency: supplierForm.agency,
       account: supplierForm.account,
+      is_collaborator: Boolean(supplierForm.isCollaborator),
     };
     const query = editingSupplier
       ? db.from("suppliers").update(payload).eq("id", editingSupplier.id).eq("clinic_id", clinic.id).select().single()
       : db.from("suppliers").insert(payload).select().single();
     const { data, error } = await query;
-    if (error) return toast.error("Não foi possível salvar o fornecedor.");
+    if (error) return toast.error("Não foi possível salvar o credor.");
     const saved = mapSupplier(data);
     setSuppliers(prev => editingSupplier ? prev.map(s => s.id === saved.id ? saved : s) : [...prev, saved].sort((a, b) => a.name.localeCompare(b.name)));
-    toast.success(editingSupplier ? "Fornecedor atualizado" : "Fornecedor cadastrado");
+    toast.success(editingSupplier ? "Credor atualizado" : "Credor cadastrado");
     setShowSupplierForm(false);
     setEditingSupplier(null);
     setSupplierForm(emptySupplier);
@@ -284,7 +291,7 @@ export default function RegistrationsPage() {
     const { data, error } = await query;
     if (error) return toast.error("Não foi possível salvar a categoria.");
     const saved = mapCategory(data);
-    setCategories(prev => editingCat ? prev.map(c => c.id === saved.id ? saved : c) : [...prev, saved].sort((a, b) => a.name.localeCompare(b.name)));
+    setCategories(prev => sortCategories(editingCat ? prev.map(c => c.id === saved.id ? saved : c) : [...prev, saved]));
     toast.success(editingCat ? "Categoria atualizada" : "Categoria cadastrada");
     setShowCatForm(false);
     setEditingCat(null);
