@@ -46,6 +46,7 @@ export interface Supplier {
   bank: string;
   agency: string;
   account: string;
+  isCollaborator?: boolean;
 }
 
 export interface FinancialCategory {

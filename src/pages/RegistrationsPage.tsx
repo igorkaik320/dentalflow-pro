@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useClinic } from "@/contexts/ClinicContext";
 import { clearPersistentState, usePersistentState } from "@/hooks/usePersistentState";
@@ -38,7 +39,7 @@ type PatientHistoryRow = {
 
 const emptyPatient: PatientForm = { name: "", cpf: "", birthDate: "", phone: "", email: "", address: "", notes: "", medicalNotes: "", insurance: "Particular" };
 const emptyProcedure: ProcedureForm = { name: "", defaultPrice: 0, averageDuration: 30 };
-const emptySupplier: SupplierForm = { name: "", legalName: "", cnpj: "", document: "", phone: "", mobile: "", email: "", category: "", notes: "", bank: "", agency: "", account: "" };
+const emptySupplier: SupplierForm = { name: "", legalName: "", cnpj: "", document: "", phone: "", mobile: "", email: "", category: "", notes: "", bank: "", agency: "", account: "", isCollaborator: false };
 const emptyCategory: CategoryForm = { name: "", type: "expense" };
 const storageKeys = {
   activeTab: "dentalflow.registrations.activeTab",
@@ -97,11 +98,16 @@ function mapSupplier(row: any): Supplier {
     bank: row.bank || "",
     agency: row.agency || "",
     account: row.account || "",
+    isCollaborator: Boolean(row.is_collaborator),
   };
 }
 
 function mapCategory(row: any): FinancialCategory {
   return { id: row.id, name: row.name || "", type: row.type || "expense" };
+}
+
+function sortCategories(list: FinancialCategory[]) {
+  return [...list].sort((a, b) => (a.type === b.type ? a.name.localeCompare(b.name) : a.type === "income" ? -1 : 1));
 }
 
 export default function RegistrationsPage() {
@@ -170,7 +176,7 @@ export default function RegistrationsPage() {
       db.from("patients").select("*").eq("clinic_id", clinic.id).order("created_at", { ascending: false }),
       db.from("procedures").select("*").eq("clinic_id", clinic.id).order("name"),
       db.from("suppliers").select("*").eq("clinic_id", clinic.id).order("name"),
-      db.from("financial_categories").select("*").eq("clinic_id", clinic.id).order("type").order("name"),
+      db.from("financial_categories").select("*").eq("clinic_id", clinic.id).order("type", { ascending: false }).order("name"),
     ]);
 
     setLoading(false);
@@ -183,7 +189,7 @@ export default function RegistrationsPage() {
     setPatients((patientRes.data || []).map(mapPatient));
     setProcedures((procRes.data || []).map(mapProcedure));
     setSuppliers((supplierRes.data || []).map(mapSupplier));
-    setCategories((catRes.data || []).map(mapCategory));
+    setCategories(sortCategories((catRes.data || []).map(mapCategory)));
   };
 
   const openPatient = (patient?: Patient) => {
@@ -243,7 +249,7 @@ export default function RegistrationsPage() {
 
   const saveSupplier = async () => {
     if (!clinic.id) return toast.error("Clínica não vinculada. Verifique o cadastro da clínica atualizados.");
-    if (!supplierForm.name.trim()) return toast.error("Informe o nome do fornecedor.");
+    if (!supplierForm.name.trim()) return toast.error("Informe o nome do credor.");
     const payload = {
       clinic_id: clinic.id,
       name: supplierForm.name.trim(),
@@ -258,15 +264,16 @@ export default function RegistrationsPage() {
       bank: supplierForm.bank,
       agency: supplierForm.agency,
       account: supplierForm.account,
+      is_collaborator: Boolean(supplierForm.isCollaborator),
     };
     const query = editingSupplier
       ? db.from("suppliers").update(payload).eq("id", editingSupplier.id).eq("clinic_id", clinic.id).select().single()
       : db.from("suppliers").insert(payload).select().single();
     const { data, error } = await query;
-    if (error) return toast.error("Não foi possível salvar o fornecedor.");
+    if (error) return toast.error("Não foi possível salvar o credor.");
     const saved = mapSupplier(data);
     setSuppliers(prev => editingSupplier ? prev.map(s => s.id === saved.id ? saved : s) : [...prev, saved].sort((a, b) => a.name.localeCompare(b.name)));
-    toast.success(editingSupplier ? "Fornecedor atualizado" : "Fornecedor cadastrado");
+    toast.success(editingSupplier ? "Credor atualizado" : "Credor cadastrado");
     setShowSupplierForm(false);
     setEditingSupplier(null);
     setSupplierForm(emptySupplier);
@@ -284,7 +291,7 @@ export default function RegistrationsPage() {
     const { data, error } = await query;
     if (error) return toast.error("Não foi possível salvar a categoria.");
     const saved = mapCategory(data);
-    setCategories(prev => editingCat ? prev.map(c => c.id === saved.id ? saved : c) : [...prev, saved].sort((a, b) => a.name.localeCompare(b.name)));
+    setCategories(prev => sortCategories(editingCat ? prev.map(c => c.id === saved.id ? saved : c) : [...prev, saved]));
     toast.success(editingCat ? "Categoria atualizada" : "Categoria cadastrada");
     setShowCatForm(false);
     setEditingCat(null);
@@ -302,13 +309,13 @@ export default function RegistrationsPage() {
   };
 
   return (
-    <ClinicLayout title="Cadastros" subtitle="Clientes, procedimentos, fornecedores e categorias integrados ao backend">
+    <ClinicLayout title="Cadastros" subtitle="Clientes, procedimentos, credores e categorias">
       <div className="space-y-5 animate-fade-in">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="flex-wrap">
             <TabsTrigger value="patients" className="gap-1.5"><User className="h-3.5 w-3.5" />Clientes</TabsTrigger>
             <TabsTrigger value="procedures" className="gap-1.5"><Stethoscope className="h-3.5 w-3.5" />Procedimentos</TabsTrigger>
-            <TabsTrigger value="suppliers" className="gap-1.5"><Building className="h-3.5 w-3.5" />Fornecedores</TabsTrigger>
+            <TabsTrigger value="suppliers" className="gap-1.5"><Building className="h-3.5 w-3.5" />Credores</TabsTrigger>
             <TabsTrigger value="categories" className="gap-1.5"><Tag className="h-3.5 w-3.5" />Categorias</TabsTrigger>
           </TabsList>
 
@@ -329,7 +336,7 @@ export default function RegistrationsPage() {
 
           <TabsContent value="procedures"><TableSection count={`${procedures.length} procedimentos cadastrados`} actionLabel="Novo Procedimento" onAction={() => { setEditingProc(null); setProcForm(emptyProcedure); setShowProcForm(true); }}><thead><tr className="border-b border-border bg-muted/50"><th className="text-left text-xs font-medium text-muted-foreground p-3">Procedimento</th><th className="text-right text-xs font-medium text-muted-foreground p-3">Valor Padrão</th><th className="text-center text-xs font-medium text-muted-foreground p-3">Duração</th><th className="text-right text-xs font-medium text-muted-foreground p-3">Ações</th></tr></thead><tbody>{procedures.map(proc => <tr key={proc.id} className="border-b border-border/50 hover:bg-muted/30"><td className="p-3"><div className="flex items-center gap-2.5"><div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0"><Stethoscope className="h-3.5 w-3.5 text-primary" /></div><span className="text-sm font-medium text-foreground">{proc.name}</span></div></td><td className="p-3 text-sm font-semibold text-foreground text-right"><span className="flex items-center justify-end gap-1"><DollarSign className="h-3.5 w-3.5 text-muted-foreground" />{formatCurrency(proc.defaultPrice)}</span></td><td className="p-3 text-sm text-muted-foreground text-center"><span className="flex items-center justify-center gap-1"><Clock className="h-3.5 w-3.5" />{proc.averageDuration} min</span></td><td className="p-3 text-right"><Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => { setEditingProc(proc); setProcForm({ name: proc.name, defaultPrice: proc.defaultPrice, averageDuration: proc.averageDuration }); setShowProcForm(true); }}><Edit2 className="h-3 w-3" /></Button><Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive" onClick={() => setDeleteProcId(proc.id)}><Trash2 className="h-3 w-3" /></Button></td></tr>)}</tbody></TableSection></TabsContent>
 
-          <TabsContent value="suppliers"><TableSection count={`${suppliers.length} fornecedores cadastrados`} actionLabel="Novo Fornecedor" onAction={() => { setEditingSupplier(null); setSupplierForm(emptySupplier); setShowSupplierForm(true); }}><thead><tr className="border-b border-border bg-muted/50"><th className="text-left text-xs font-medium text-muted-foreground p-3">Fornecedor</th><th className="text-left text-xs font-medium text-muted-foreground p-3 hidden md:table-cell">CPF/CNPJ</th><th className="text-left text-xs font-medium text-muted-foreground p-3 hidden md:table-cell">Contato</th><th className="text-left text-xs font-medium text-muted-foreground p-3">Categoria</th><th className="text-right text-xs font-medium text-muted-foreground p-3">Ações</th></tr></thead><tbody>{suppliers.map(sup => <tr key={sup.id} className="border-b border-border/50 hover:bg-muted/30"><td className="p-3"><div className="flex items-center gap-2.5"><div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0"><Building className="h-3.5 w-3.5 text-primary" /></div><div><p className="text-sm font-medium text-foreground">{sup.name}</p>{sup.legalName && <p className="text-[10px] text-muted-foreground">{sup.legalName}</p>}{sup.notes && <p className="text-[10px] text-muted-foreground">{sup.notes}</p>}</div></div></td><td className="p-3 text-sm text-muted-foreground hidden md:table-cell">{sup.document || sup.cnpj}</td><td className="p-3 hidden md:table-cell"><p className="text-sm text-muted-foreground flex items-center gap-1"><Phone className="h-3 w-3" />{sup.mobile || sup.phone}</p></td><td className="p-3"><Badge variant="secondary" className="text-xs font-normal">{sup.category || "Sem categoria"}</Badge></td><td className="p-3 text-right"><Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => { setEditingSupplier(sup); setSupplierForm({ name: sup.name, legalName: sup.legalName, cnpj: sup.cnpj, document: sup.document || sup.cnpj, phone: sup.phone, mobile: sup.mobile, email: sup.email, category: sup.category, notes: sup.notes, bank: sup.bank, agency: sup.agency, account: sup.account }); setShowSupplierForm(true); }}><Edit2 className="h-3 w-3" /></Button><Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive" onClick={() => setDeleteSupplierId(sup.id)}><Trash2 className="h-3 w-3" /></Button></td></tr>)}</tbody></TableSection></TabsContent>
+          <TabsContent value="suppliers"><TableSection count={`${suppliers.length} credores cadastrados`} actionLabel="Novo Credor" onAction={() => { setEditingSupplier(null); setSupplierForm(emptySupplier); setShowSupplierForm(true); }}><thead><tr className="border-b border-border bg-muted/50"><th className="text-left text-xs font-medium text-muted-foreground p-3">Credor</th><th className="text-left text-xs font-medium text-muted-foreground p-3 hidden md:table-cell">CPF/CNPJ</th><th className="text-left text-xs font-medium text-muted-foreground p-3 hidden md:table-cell">Contato</th><th className="text-left text-xs font-medium text-muted-foreground p-3">Categoria</th><th className="text-right text-xs font-medium text-muted-foreground p-3">Ações</th></tr></thead><tbody>{suppliers.map(sup => <tr key={sup.id} className="border-b border-border/50 hover:bg-muted/30"><td className="p-3"><div className="flex items-center gap-2.5"><div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0"><Building className="h-3.5 w-3.5 text-primary" /></div><div><div className="flex items-center gap-2"><p className="text-sm font-medium text-foreground">{sup.name}</p>{sup.isCollaborator && <Badge className="bg-primary/10 text-primary border-0 text-[10px] font-medium">Colaborador</Badge>}</div>{sup.legalName && <p className="text-[10px] text-muted-foreground">{sup.legalName}</p>}{sup.notes && <p className="text-[10px] text-muted-foreground">{sup.notes}</p>}</div></div></td><td className="p-3 text-sm text-muted-foreground hidden md:table-cell">{sup.document || sup.cnpj}</td><td className="p-3 hidden md:table-cell"><p className="text-sm text-muted-foreground flex items-center gap-1"><Phone className="h-3 w-3" />{sup.mobile || sup.phone}</p></td><td className="p-3"><Badge variant="secondary" className="text-xs font-normal">{sup.category || "Sem categoria"}</Badge></td><td className="p-3 text-right"><Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => { setEditingSupplier(sup); setSupplierForm({ name: sup.name, legalName: sup.legalName, cnpj: sup.cnpj, document: sup.document || sup.cnpj, phone: sup.phone, mobile: sup.mobile, email: sup.email, category: sup.category, notes: sup.notes, bank: sup.bank, agency: sup.agency, account: sup.account, isCollaborator: Boolean(sup.isCollaborator) }); setShowSupplierForm(true); }}><Edit2 className="h-3 w-3" /></Button><Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive" onClick={() => setDeleteSupplierId(sup.id)}><Trash2 className="h-3 w-3" /></Button></td></tr>)}</tbody></TableSection></TabsContent>
 
           <TabsContent value="categories"><TableSection count={`${categories.length} categorias cadastradas`} actionLabel="Nova Categoria" onAction={() => { setEditingCat(null); setCatForm(emptyCategory); setShowCatForm(true); }}><thead><tr className="border-b border-border bg-muted/50"><th className="text-left text-xs font-medium text-muted-foreground p-3">Nome</th><th className="text-left text-xs font-medium text-muted-foreground p-3">Tipo</th><th className="text-right text-xs font-medium text-muted-foreground p-3">Ações</th></tr></thead><tbody>{categories.map(cat => <tr key={cat.id} className="border-b border-border/50 hover:bg-muted/30"><td className="p-3"><div className="flex items-center gap-2.5"><div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${cat.type === "income" ? "bg-success/10" : "bg-destructive/10"}`}><Tag className={`h-3.5 w-3.5 ${cat.type === "income" ? "text-success" : "text-destructive"}`} /></div><span className="text-sm font-medium text-foreground">{cat.name}</span></div></td><td className="p-3"><Badge variant="secondary" className="text-xs font-normal">{cat.type === "income" ? "Receita" : "Despesa"}</Badge></td><td className="p-3 text-right"><Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => { setEditingCat(cat); setCatForm({ name: cat.name, type: cat.type }); setShowCatForm(true); }}><Edit2 className="h-3 w-3" /></Button><Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive" onClick={() => setDeleteCatId(cat.id)}><Trash2 className="h-3 w-3" /></Button></td></tr>)}</tbody></TableSection></TabsContent>
         </Tabs>
@@ -340,13 +347,13 @@ export default function RegistrationsPage() {
 
         <Dialog open={showProcForm} onOpenChange={open => { setShowProcForm(open); if (!open) setEditingProc(null); }}><DialogContent className="max-w-md"><DialogHeader><DialogTitle>{editingProc ? "Editar Procedimento" : "Novo Procedimento"}</DialogTitle></DialogHeader><div className="space-y-3 mt-2"><div><Label>Nome do procedimento</Label><Input value={procForm.name} onChange={e => setProcForm({ ...procForm, name: e.target.value })} /></div><div className="grid grid-cols-2 gap-3"><div><Label>Valor padrão (R$)</Label><Input inputMode="numeric" value={formatCurrency(procForm.defaultPrice)} onChange={e => setProcForm({ ...procForm, defaultPrice: parseCurrencyInput(e.target.value) })} /></div><div><Label>Duração média (min)</Label><Input type="number" value={procForm.averageDuration} onChange={e => setProcForm({ ...procForm, averageDuration: Number(e.target.value) })} /></div></div></div><div className="flex justify-end gap-2 mt-4"><Button variant="outline" onClick={() => setShowProcForm(false)}>Cancelar</Button><Button onClick={saveProcedure}>{editingProc ? "Atualizar" : "Salvar"}</Button></div></DialogContent></Dialog>
 
-        <Dialog open={showSupplierForm} onOpenChange={open => { setShowSupplierForm(open); if (!open) setEditingSupplier(null); }}><DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>{editingSupplier ? "Editar Fornecedor" : "Novo Fornecedor"}</DialogTitle></DialogHeader><div className="space-y-3 mt-2"><div className="grid grid-cols-2 gap-3"><div><Label>Nome do fornecedor</Label><Input value={supplierForm.name} onChange={e => setSupplierForm({ ...supplierForm, name: e.target.value })} /></div><div><Label>Razão social</Label><Input value={supplierForm.legalName} onChange={e => setSupplierForm({ ...supplierForm, legalName: e.target.value })} /></div><div><Label>CPF/CNPJ</Label><Input inputMode="numeric" value={supplierForm.document || supplierForm.cnpj} onChange={e => { const value = formatDocument(e.target.value); setSupplierForm({ ...supplierForm, document: value, cnpj: value }); }} /></div><div><Label>Categoria</Label><Input value={supplierForm.category} onChange={e => setSupplierForm({ ...supplierForm, category: e.target.value })} /></div><div><Label>Telefone</Label><Input value={supplierForm.phone} onChange={e => setSupplierForm({ ...supplierForm, phone: e.target.value })} /></div><div><Label>Celular</Label><Input value={supplierForm.mobile} onChange={e => setSupplierForm({ ...supplierForm, mobile: e.target.value })} /></div><div className="col-span-2"><Label>Email</Label><Input value={supplierForm.email} onChange={e => setSupplierForm({ ...supplierForm, email: e.target.value })} /></div><div><Label>Banco</Label><Input value={supplierForm.bank} onChange={e => setSupplierForm({ ...supplierForm, bank: e.target.value })} /></div><div><Label>Agência</Label><Input value={supplierForm.agency} onChange={e => setSupplierForm({ ...supplierForm, agency: e.target.value })} /></div><div className="col-span-2"><Label>Conta</Label><Input value={supplierForm.account} onChange={e => setSupplierForm({ ...supplierForm, account: e.target.value })} /></div></div><div><Label>Observações</Label><Textarea rows={2} value={supplierForm.notes} onChange={e => setSupplierForm({ ...supplierForm, notes: e.target.value })} /></div></div><div className="flex justify-end gap-2 mt-4"><Button variant="outline" onClick={() => setShowSupplierForm(false)}>Cancelar</Button><Button onClick={saveSupplier}>{editingSupplier ? "Atualizar" : "Salvar"}</Button></div></DialogContent></Dialog>
+        <Dialog open={showSupplierForm} onOpenChange={open => { setShowSupplierForm(open); if (!open) setEditingSupplier(null); }}><DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>{editingSupplier ? "Editar Credor" : "Novo Credor"}</DialogTitle></DialogHeader><div className="space-y-3 mt-2"><div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 p-3"><Checkbox id="supplier-collaborator" checked={Boolean(supplierForm.isCollaborator)} onCheckedChange={checked => setSupplierForm({ ...supplierForm, isCollaborator: checked === true })} /><Label htmlFor="supplier-collaborator" className="cursor-pointer">Colaborador</Label></div><div className="grid grid-cols-2 gap-3"><div><Label>Nome do credor</Label><Input value={supplierForm.name} onChange={e => setSupplierForm({ ...supplierForm, name: e.target.value })} /></div><div><Label>Razão social</Label><Input value={supplierForm.legalName} onChange={e => setSupplierForm({ ...supplierForm, legalName: e.target.value })} /></div><div><Label>CPF/CNPJ</Label><Input inputMode="numeric" value={supplierForm.document || supplierForm.cnpj} onChange={e => { const value = formatDocument(e.target.value); setSupplierForm({ ...supplierForm, document: value, cnpj: value }); }} /></div><div><Label>Categoria</Label><Input value={supplierForm.category} onChange={e => setSupplierForm({ ...supplierForm, category: e.target.value })} /></div><div><Label>Telefone</Label><Input value={supplierForm.phone} onChange={e => setSupplierForm({ ...supplierForm, phone: e.target.value })} /></div><div><Label>Celular</Label><Input value={supplierForm.mobile} onChange={e => setSupplierForm({ ...supplierForm, mobile: e.target.value })} /></div><div className="col-span-2"><Label>Email</Label><Input value={supplierForm.email} onChange={e => setSupplierForm({ ...supplierForm, email: e.target.value })} /></div><div><Label>Banco</Label><Input value={supplierForm.bank} onChange={e => setSupplierForm({ ...supplierForm, bank: e.target.value })} /></div><div><Label>Agência</Label><Input value={supplierForm.agency} onChange={e => setSupplierForm({ ...supplierForm, agency: e.target.value })} /></div><div className="col-span-2"><Label>Conta</Label><Input value={supplierForm.account} onChange={e => setSupplierForm({ ...supplierForm, account: e.target.value })} /></div></div><div><Label>Observações</Label><Textarea rows={2} value={supplierForm.notes} onChange={e => setSupplierForm({ ...supplierForm, notes: e.target.value })} /></div></div><div className="flex justify-end gap-2 mt-4"><Button variant="outline" onClick={() => setShowSupplierForm(false)}>Cancelar</Button><Button onClick={saveSupplier}>{editingSupplier ? "Atualizar" : "Salvar"}</Button></div></DialogContent></Dialog>
 
-        <Dialog open={showCatForm} onOpenChange={open => { setShowCatForm(open); if (!open) setEditingCat(null); }}><DialogContent className="max-w-sm"><DialogHeader><DialogTitle>{editingCat ? "Editar Categoria" : "Nova Categoria"}</DialogTitle></DialogHeader><div className="space-y-3 mt-2"><div><Label>Nome da categoria</Label><Input value={catForm.name} onChange={e => setCatForm({ ...catForm, name: e.target.value })} /></div><div><Label>Tipo</Label><Select value={catForm.type} onValueChange={(type: "income" | "expense") => setCatForm({ ...catForm, type })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="expense">Despesa</SelectItem><SelectItem value="income">Receita</SelectItem></SelectContent></Select></div></div><div className="flex justify-end gap-2 mt-4"><Button variant="outline" onClick={() => setShowCatForm(false)}>Cancelar</Button><Button onClick={saveCategory}>{editingCat ? "Atualizar" : "Salvar"}</Button></div></DialogContent></Dialog>
+        <Dialog open={showCatForm} onOpenChange={open => { setShowCatForm(open); if (!open) setEditingCat(null); }}><DialogContent className="max-w-sm"><DialogHeader><DialogTitle>{editingCat ? "Editar Categoria" : "Nova Categoria"}</DialogTitle></DialogHeader><div className="space-y-3 mt-2"><div><Label>Nome da categoria</Label><Input value={catForm.name} onChange={e => setCatForm({ ...catForm, name: e.target.value })} /></div><div><Label>Tipo</Label><Select value={catForm.type} onValueChange={(type: "income" | "expense") => setCatForm({ ...catForm, type })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="income">Receita</SelectItem><SelectItem value="expense">Despesa</SelectItem></SelectContent></Select></div></div><div className="flex justify-end gap-2 mt-4"><Button variant="outline" onClick={() => setShowCatForm(false)}>Cancelar</Button><Button onClick={saveCategory}>{editingCat ? "Atualizar" : "Salvar"}</Button></div></DialogContent></Dialog>
 
         <ConfirmDialog open={!!deletePatientId} onOpenChange={() => setDeletePatientId(null)} title="Excluir Cliente" description="Tem certeza que deseja excluir este cliente?" onConfirm={() => deletePatientId && removeRecord("patients", deletePatientId, () => { setPatients(prev => prev.filter(p => p.id !== deletePatientId)); setDeletePatientId(null); }, "Cliente")} />
         <ConfirmDialog open={!!deleteProcId} onOpenChange={() => setDeleteProcId(null)} title="Excluir Procedimento" description="Tem certeza que deseja excluir este procedimento?" onConfirm={() => deleteProcId && removeRecord("procedures", deleteProcId, () => { setProcedures(prev => prev.filter(p => p.id !== deleteProcId)); setDeleteProcId(null); }, "Procedimento")} />
-        <ConfirmDialog open={!!deleteSupplierId} onOpenChange={() => setDeleteSupplierId(null)} title="Excluir Fornecedor" description="Tem certeza que deseja excluir este fornecedor?" onConfirm={() => deleteSupplierId && removeRecord("suppliers", deleteSupplierId, () => { setSuppliers(prev => prev.filter(s => s.id !== deleteSupplierId)); setDeleteSupplierId(null); }, "Fornecedor")} />
+        <ConfirmDialog open={!!deleteSupplierId} onOpenChange={() => setDeleteSupplierId(null)} title="Excluir Credor" description="Tem certeza que deseja excluir este credor?" onConfirm={() => deleteSupplierId && removeRecord("suppliers", deleteSupplierId, () => { setSuppliers(prev => prev.filter(s => s.id !== deleteSupplierId)); setDeleteSupplierId(null); }, "Credor")} />
         <ConfirmDialog open={!!deleteCatId} onOpenChange={() => setDeleteCatId(null)} title="Excluir Categoria" description="Tem certeza que deseja excluir esta categoria?" onConfirm={() => deleteCatId && removeRecord("financial_categories", deleteCatId, () => { setCategories(prev => prev.filter(c => c.id !== deleteCatId)); setDeleteCatId(null); }, "Categoria")} />
       </div>
     </ClinicLayout>

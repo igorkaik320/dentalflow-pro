@@ -8,6 +8,13 @@
       "when": 1790081841774,
       "tag": "0000_enhance_audit_logging",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790176695151,
+      "tag": "0001_add_supplier_collaborator_flag",
+      "breakpoints": true
     }
   ]
 }
