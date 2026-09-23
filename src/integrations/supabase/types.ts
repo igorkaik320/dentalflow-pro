@@ -1051,6 +1051,7 @@ export type Database = {
           email: string | null
           external_id: string | null
           id: string
+          is_collaborator: boolean
           legal_name: string | null
           mobile: string | null
           name: string
@@ -1070,6 +1071,7 @@ export type Database = {
           email?: string | null
           external_id?: string | null
           id?: string
+          is_collaborator?: boolean
           legal_name?: string | null
           mobile?: string | null
           name: string
@@ -1089,6 +1091,7 @@ export type Database = {
           email?: string | null
           external_id?: string | null
           id?: string
+          is_collaborator?: boolean
           legal_name?: string | null
           mobile?: string | null
           name?: string
