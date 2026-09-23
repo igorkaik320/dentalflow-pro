@@ -309,13 +309,13 @@ export default function RegistrationsPage() {
   };
 
   return (
-    <ClinicLayout title="Cadastros" subtitle="Clientes, procedimentos, fornecedores e categorias integrados ao backend">
+    <ClinicLayout title="Cadastros" subtitle="Clientes, procedimentos, credores e categorias">
       <div className="space-y-5 animate-fade-in">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="flex-wrap">
             <TabsTrigger value="patients" className="gap-1.5"><User className="h-3.5 w-3.5" />Clientes</TabsTrigger>
             <TabsTrigger value="procedures" className="gap-1.5"><Stethoscope className="h-3.5 w-3.5" />Procedimentos</TabsTrigger>
-            <TabsTrigger value="suppliers" className="gap-1.5"><Building className="h-3.5 w-3.5" />Fornecedores</TabsTrigger>
+            <TabsTrigger value="suppliers" className="gap-1.5"><Building className="h-3.5 w-3.5" />Credores</TabsTrigger>
             <TabsTrigger value="categories" className="gap-1.5"><Tag className="h-3.5 w-3.5" />Categorias</TabsTrigger>
           </TabsList>
 
