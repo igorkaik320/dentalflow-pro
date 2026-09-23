@@ -141,6 +141,62 @@ export type Database = {
           },
         ]
       }
+      bank_accounts: {
+        Row: {
+          account_number: string
+          account_type: string
+          active: boolean
+          agency: string
+          bank_name: string
+          clinic_id: string
+          created_at: string
+          current_balance: number
+          id: string
+          initial_balance: number
+          initial_date: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          account_number: string
+          account_type?: string
+          active?: boolean
+          agency: string
+          bank_name: string
+          clinic_id: string
+          created_at?: string
+          current_balance?: number
+          id?: string
+          initial_balance?: number
+          initial_date: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          account_number?: string
+          account_type?: string
+          active?: boolean
+          agency?: string
+          bank_name?: string
+          clinic_id?: string
+          created_at?: string
+          current_balance?: number
+          id?: string
+          initial_balance?: number
+          initial_date?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_accounts_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cash_sessions: {
         Row: {
           clinic_id: string
@@ -598,50 +654,69 @@ export type Database = {
       payable_installments: {
         Row: {
           amount: number
+          bank_account_id: string | null
           clinic_id: string
           created_at: string
+          desconto: number | null
           due_date: string
           external_id: string | null
           id: string
           installment_number: number
+          juros_multa: number | null
           notes: string | null
           paid_amount: number | null
           paid_date: string | null
           payable_id: string
+          payment_company_id: string | null
           status: string
           updated_at: string
         }
         Insert: {
           amount?: number
+          bank_account_id?: string | null
           clinic_id: string
           created_at?: string
+          desconto?: number | null
           due_date: string
           external_id?: string | null
           id?: string
           installment_number?: number
+          juros_multa?: number | null
           notes?: string | null
           paid_amount?: number | null
           paid_date?: string | null
           payable_id: string
+          payment_company_id?: string | null
           status?: string
           updated_at?: string
         }
         Update: {
           amount?: number
+          bank_account_id?: string | null
           clinic_id?: string
           created_at?: string
+          desconto?: number | null
           due_date?: string
           external_id?: string | null
           id?: string
           installment_number?: number
+          juros_multa?: number | null
           notes?: string | null
           paid_amount?: number | null
           paid_date?: string | null
           payable_id?: string
+          payment_company_id?: string | null
           status?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "payable_installments_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payable_installments_clinic_id_fkey"
             columns: ["clinic_id"]
@@ -654,6 +729,13 @@ export type Database = {
             columns: ["payable_id"]
             isOneToOne: false
             referencedRelation: "payables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payable_installments_payment_company_id_fkey"
+            columns: ["payment_company_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
             referencedColumns: ["id"]
           },
         ]
@@ -863,6 +945,7 @@ export type Database = {
       receivables: {
         Row: {
           amount: number
+          bank_account_id: string | null
           clinic_id: string
           created_at: string
           due_date: string
@@ -871,6 +954,7 @@ export type Database = {
           paid_date: string | null
           patient_id: string | null
           patient_name: string
+          payment_company_id: string | null
           payment_method: string | null
           procedure_name: string
           professional_id: string | null
@@ -880,6 +964,7 @@ export type Database = {
         }
         Insert: {
           amount?: number
+          bank_account_id?: string | null
           clinic_id: string
           created_at?: string
           due_date: string
@@ -888,6 +973,7 @@ export type Database = {
           paid_date?: string | null
           patient_id?: string | null
           patient_name: string
+          payment_company_id?: string | null
           payment_method?: string | null
           procedure_name: string
           professional_id?: string | null
@@ -897,6 +983,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          bank_account_id?: string | null
           clinic_id?: string
           created_at?: string
           due_date?: string
@@ -905,6 +992,7 @@ export type Database = {
           paid_date?: string | null
           patient_id?: string | null
           patient_name?: string
+          payment_company_id?: string | null
           payment_method?: string | null
           procedure_name?: string
           professional_id?: string | null
@@ -913,6 +1001,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "receivables_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "receivables_clinic_id_fkey"
             columns: ["clinic_id"]
@@ -925,6 +1020,13 @@ export type Database = {
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receivables_payment_company_id_fkey"
+            columns: ["payment_company_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
             referencedColumns: ["id"]
           },
           {
