@@ -14,7 +14,6 @@ export const permissionActions: Array<{ key: PermissionAction; label: string }> 
 
 export const permissionModules: Array<{ key: PermissionModule; label: string; group: "principal" | "financeiro" | "sistema" }> = [
   { key: "dashboard", label: "Dashboard", group: "principal" },
-  { key: "agenda", label: "Agenda", group: "principal" },
   { key: "registrations", label: "Cadastros", group: "principal" },
   { key: "patrimony", label: "Patrimônio", group: "principal" },
   { key: "financial", label: "Financeiro", group: "financeiro" },

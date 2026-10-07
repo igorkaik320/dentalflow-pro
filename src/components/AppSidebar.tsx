@@ -1,159 +1,52 @@
-import {
-  LayoutDashboard,
-  Calendar,
-  DollarSign,
-  FileText,
-  Settings,
-  Activity,
-  ClipboardList,
-  Lock,
-  Boxes,
-} from "lucide-react";
+import { LayoutDashboard, ArrowUpCircle, ArrowDownCircle, Wallet, FileText, Settings, ClipboardList, Lock, Boxes, ShieldCheck, ChevronRight } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useClinic } from "@/contexts/ClinicContext";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarHeader,
-  SidebarFooter,
-  useSidebar,
-} from "@/components/ui/sidebar";
-import { useState } from "react";
+import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter, useSidebar } from "@/components/ui/sidebar";
 import type { PermissionModule } from "@/lib/permissions";
 
-const mainItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard, module: "dashboard" },
-  { title: "Agenda", url: "/agenda", icon: Calendar, module: "agenda" },
-  { title: "Cadastros", url: "/cadastros", icon: ClipboardList, module: "registrations" },
-  { title: "Patrimonio", url: "/patrimonio", icon: Boxes, module: "patrimony" },
+const groups: Array<{ label: string; items: Array<{ title: string; url: string; icon: typeof LayoutDashboard; module: PermissionModule; adminOnly?: boolean }> }> = [
+  { label: "Gestão", items: [
+    { title: "Dashboard", url: "/", icon: LayoutDashboard, module: "dashboard" },
+    { title: "Cadastros", url: "/cadastros", icon: ClipboardList, module: "registrations" },
+    { title: "Patrimônio", url: "/patrimonio", icon: Boxes, module: "patrimony" },
+  ] },
+  { label: "Financeiro", items: [
+    { title: "Contas a Receber", url: "/financeiro/receber", icon: ArrowUpCircle, module: "financial" },
+    { title: "Contas a Pagar", url: "/financeiro/pagar", icon: ArrowDownCircle, module: "financial" },
+    { title: "Controle de Caixa", url: "/financeiro/caixa", icon: Wallet, module: "financial" },
+    { title: "Parcelas", url: "/financeiro/parcelas", icon: FileText, module: "payable_installments" },
+  ] },
+  { label: "Administração", items: [
+    { title: "Auditoria", url: "/auditoria", icon: ShieldCheck, module: "security", adminOnly: true },
+    { title: "Segurança", url: "/seguranca", icon: Lock, module: "security" },
+    { title: "Configurações", url: "/configuracoes", icon: Settings, module: "settings" },
+  ] },
 ];
-
-const financeItems = [
-  { title: "Financeiro", url: "/financeiro", icon: DollarSign, module: "financial" },
-  { title: "Parcelas", url: "/financeiro/parcelas", icon: FileText, module: "payable_installments" },
-];
-
-const systemItems = [
-  { title: "Configuracoes", url: "/configuracoes", icon: Settings, module: "settings" },
-  { title: "Seguranca", url: "/seguranca", icon: Lock, module: "security" },
-];
-
-function ClinicLogo({ logoUrl }: { logoUrl: string | null }) {
-  const [failedUrl, setFailedUrl] = useState<string | null>(null);
-  if (logoUrl && logoUrl !== failedUrl) {
-    return <img src={logoUrl} alt="Logo" className="h-full w-full rounded-md object-cover" onError={() => setFailedUrl(logoUrl)} />;
-  }
-  return <Activity className="h-4 w-4 text-sidebar-primary-foreground" />;
-}
+const roleLabels = { admin: "Administrador", reception: "Recepção", dentist: "Especialista", finance: "Financeiro" };
 
 export function AppSidebar() {
-  const { state } = useSidebar();
-  const collapsed = state === "collapsed";
-  const location = useLocation();
-  const { clinic, can } = useClinic();
-  const isActive = (path: string) =>
-    path === "/" || path === "/financeiro" ? location.pathname === path : location.pathname.startsWith(path);
-
-  return (
-    <Sidebar collapsible="icon">
-      <SidebarHeader className={`border-b border-sidebar-border py-3 ${collapsed ? "px-2" : "px-3"}`}>
-        <div className={`flex items-center gap-2.5 overflow-hidden ${collapsed ? "justify-center" : ""}`}>
-          <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 overflow-hidden ${clinic.logoUrl ? "bg-white" : "bg-sidebar-primary"}`}>
-            <ClinicLogo logoUrl={clinic.logoUrl} />
-          </div>
-          {!collapsed && (
-            <div className="leading-tight min-w-0">
-              <p className="text-sm font-bold text-sidebar-accent-foreground truncate">{clinic.name}</p>
-              <p className="text-[10px] text-sidebar-muted">Gestão Estética</p>
-            </div>
-          )}
-        </div>
-      </SidebarHeader>
-      <SidebarContent className="px-2 py-2">
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-sidebar-muted text-[10px] uppercase tracking-wider mb-1">
-            Principal
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {mainItems.map((item) => {
-                const allowed = can(item.module as PermissionModule);
-                return (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <NavLink to={item.url} end={item.url === "/"} className={!allowed ? "opacity-60" : ""}>
-                      <item.icon className="h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
-                      {!collapsed && !allowed && <Lock className="ml-auto h-3.5 w-3.5" />}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-sidebar-muted text-[10px] uppercase tracking-wider mb-1">
-            Financeiro
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {financeItems.map((item) => {
-                const allowed = can(item.module as PermissionModule);
-                return (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <NavLink to={item.url} className={!allowed ? "opacity-60" : ""}>
-                      <item.icon className="h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
-                      {!collapsed && !allowed && <Lock className="ml-auto h-3.5 w-3.5" />}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-sidebar-muted text-[10px] uppercase tracking-wider mb-1">
-            Sistema
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {systemItems.map((item) => {
-                const allowed = can(item.module as PermissionModule);
-                return (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <NavLink to={item.url} className={!allowed ? "opacity-60" : ""}>
-                      <item.icon className="h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
-                      {!collapsed && !allowed && <Lock className="ml-auto h-3.5 w-3.5" />}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-      <SidebarFooter className="border-t border-sidebar-border p-3">
-        {!collapsed && (
-          <p className="text-[10px] text-sidebar-muted text-center">© 2026 {clinic.name} v1.0</p>
-        )}
-      </SidebarFooter>
-    </Sidebar>
-  );
+  const { state, isMobile, setOpenMobile } = useSidebar();
+  const collapsed = state === "collapsed" && !isMobile;
+  const { pathname } = useLocation();
+  const { clinic, can, memberRole } = useClinic();
+  return <Sidebar collapsible="icon" className="border-r border-sidebar-border">
+    <SidebarHeader className="border-b border-sidebar-border px-5 py-6 group-data-[collapsible=icon]:px-2">
+      {!collapsed && <div className="min-w-0"><p className="truncate text-lg font-semibold text-sidebar-accent-foreground">{clinic.name}</p><p className="mt-1 text-xs text-sidebar-muted">Gestão da clínica</p></div>}
+    </SidebarHeader>
+    <SidebarContent className="px-2 py-4 gap-4">
+      {groups.map(group => <SidebarGroup key={group.label} className="py-0"><SidebarGroupLabel className="mb-2 text-xs font-medium text-sidebar-muted">{group.label}</SidebarGroupLabel><SidebarGroupContent><SidebarMenu className="gap-1">
+        {group.items.filter(item => !item.adminOnly || memberRole === "admin").map(item => {
+          const active = pathname === item.url;
+          const allowed = can(item.module);
+          return <SidebarMenuItem key={item.url}><SidebarMenuButton asChild tooltip={item.title} isActive={active} className="h-10 px-3 data-[active=true]:bg-sidebar-primary/15 data-[active=true]:text-sidebar-primary data-[active=true]:font-semibold">
+            <NavLink to={item.url} end onClick={() => { if (isMobile) setOpenMobile(false); }} className={!allowed ? "opacity-50" : ""}><item.icon /><span>{item.title}</span>{!collapsed && (!allowed ? <Lock className="ml-auto h-3 w-3" /> : active ? <ChevronRight className="ml-auto h-3 w-3" /> : null)}</NavLink>
+          </SidebarMenuButton></SidebarMenuItem>;
+        })}
+      </SidebarMenu></SidebarGroupContent></SidebarGroup>)}
+    </SidebarContent>
+    <SidebarFooter className="border-t border-sidebar-border p-4 group-data-[collapsible=icon]:p-2">
+      {!collapsed && <div className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 shrink-0 text-sidebar-primary" /><div className="min-w-0"><p className="text-xs font-medium text-sidebar-accent-foreground">{memberRole ? roleLabels[memberRole] : "Usuário"}</p><p className="mt-0.5 text-[11px] text-sidebar-muted">{clinic.name} · 2026</p></div></div>}
+    </SidebarFooter>
+  </Sidebar>;
 }

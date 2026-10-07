@@ -2,14 +2,14 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ClinicProvider } from "@/contexts/ClinicContext";
 import { ClinicLayout } from "@/components/ClinicLayout";
 import { AuthGate } from "@/components/AuthGate";
 import { useClinic } from "@/contexts/ClinicContext";
 import type { PermissionModule } from "@/lib/permissions";
 import DashboardPage from "./pages/DashboardPage";
-import AgendaPage from "./pages/AgendaPage";
+import AuditPage from "./pages/AuditPage";
 import FinancialPage from "./pages/FinancialPage";
 import PayableInstallmentsPage from "./pages/PayableInstallmentsPage";
 import PatrimonyPage from "./pages/PatrimonyPage";
@@ -52,9 +52,12 @@ const App = () => (
             <Routes>
               <Route path="/" element={<AccessGuard module="dashboard"><DashboardPage /></AccessGuard>} />
               <Route path="/login" element={<AccessGuard module="dashboard"><DashboardPage /></AccessGuard>} />
-              <Route path="/agenda" element={<AccessGuard module="agenda"><AgendaPage /></AccessGuard>} />
               <Route path="/cadastros" element={<AccessGuard module="registrations"><RegistrationsPage /></AccessGuard>} />
-              <Route path="/financeiro" element={<AccessGuard module="financial"><FinancialPage /></AccessGuard>} />
+              <Route path="/financeiro" element={<Navigate to="/financeiro/receber" replace />} />
+              <Route path="/financeiro/receber" element={<AccessGuard module="financial"><FinancialPage section="receivables" /></AccessGuard>} />
+              <Route path="/financeiro/pagar" element={<AccessGuard module="financial"><FinancialPage section="payables" /></AccessGuard>} />
+              <Route path="/financeiro/caixa" element={<AccessGuard module="financial"><FinancialPage section="cashflow" /></AccessGuard>} />
+              <Route path="/auditoria" element={<AuditPage />} />
               <Route path="/financeiro/parcelas" element={<AccessGuard module="payable_installments"><PayableInstallmentsPage /></AccessGuard>} />
               <Route path="/patrimonio" element={<AccessGuard module="patrimony"><PatrimonyPage /></AccessGuard>} />
               <Route path="/configuracoes" element={<AccessGuard module="settings"><SettingsPage /></AccessGuard>} />

@@ -172,15 +172,14 @@ export default function DashboardPage() {
   const loadDashboard = async () => {
     if (!clinic.id) return;
     setLoading(true);
-    const [receivableRes, payableRes, patientRes, appointmentRes] = await Promise.all([
+    const [receivableRes, payableRes, patientRes] = await Promise.all([
       db.from("receivables").select("id, amount, status, due_date, paid_date, professional_name").eq("clinic_id", clinic.id),
       db.from("payables").select("id, amount, status, due_date, paid_date, payable_installments(id, amount, paid_amount, status, due_date, paid_date)").eq("clinic_id", clinic.id),
       db.from("patients").select("id, created_at").eq("clinic_id", clinic.id),
-      db.from("appointments").select("id, patient_name, professional_name, procedure_name, appointment_date, appointment_time, duration, status").eq("clinic_id", clinic.id).eq("appointment_date", today()).order("appointment_time"),
     ]);
     setLoading(false);
 
-    const error = receivableRes.error || payableRes.error || patientRes.error || appointmentRes.error;
+    const error = receivableRes.error || payableRes.error || patientRes.error;
     if (error) return toast.error("Não foi possível carregar o dashboard.");
 
     setReceivables((receivableRes.data || []).map((row: any) => ({ ...row, amount: Number(row.amount || 0) })));
@@ -194,7 +193,6 @@ export default function DashboardPage() {
       })),
     })));
     setPatients(patientRes.data || []);
-    setAppointments(appointmentRes.data || []);
   };
 
   const metrics = useMemo(() => {
@@ -312,33 +310,7 @@ export default function DashboardPage() {
           </Card>
         </div>
 
-        <Card className="p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-foreground">Agenda de Hoje</h3>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Calendar className="h-3.5 w-3.5" />
-              {new Date(today() + "T12:00:00").toLocaleDateString("pt-BR")}
-            </div>
-          </div>
-          <div className="space-y-2">
-            {!loading && appointments.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">Nenhum agendamento para hoje.</p>}
-            {appointments.map((apt) => (
-              <div key={apt.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className="text-center min-w-[50px]">
-                    <p className="text-sm font-semibold text-foreground">{String(apt.appointment_time).slice(0, 5)}</p>
-                    <p className="text-[10px] text-muted-foreground">{apt.duration}min</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{apt.patient_name}</p>
-                    <p className="text-xs text-muted-foreground">{apt.procedure_name} • {apt.professional_name}</p>
-                  </div>
-                </div>
-                <span className={`text-xs font-medium px-2 py-1 rounded-full ${statusColors[apt.status] || statusColors.confirmed}`}>{statusLabels[apt.status] || apt.status}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
+
       </div>
     </ClinicLayout>
   );
