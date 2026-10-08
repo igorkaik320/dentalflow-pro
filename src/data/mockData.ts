@@ -85,6 +85,7 @@ export interface Receivable {
   status: 'open' | 'paid' | 'overdue';
   dueDate: string;
   paidDate?: string;
+  bankAccountId?: string;
 }
 
 export interface Payable {
@@ -116,6 +117,7 @@ export interface PayableInstallment {
   paidAmount?: number;
   status: 'open' | 'paid' | 'overdue';
   notes?: string;
+  bankAccountId?: string;
 }
 
 export const mockProcedures: Procedure[] = [
