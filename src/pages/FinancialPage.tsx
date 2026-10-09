@@ -11,7 +11,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useClinic } from "@/contexts/ClinicContext";
 import { clearPersistentState, usePersistentState } from "@/hooks/usePersistentState";
 import { db } from "@/lib/clinicCloud";
-import { formatCurrency, parseCurrencyInput } from "@/lib/utils";
+import { formatCurrency, parseCurrencyInput, onlyDigits } from "@/lib/utils";
 import type { FinancialCategory, Payable, PayableInstallment, Professional, Receivable, Supplier } from "@/data/mockData";
 import { toast } from "sonner";
 import { DollarSign, ArrowUpCircle, ArrowDownCircle, Plus, Edit2, Trash2, CalendarDays, CheckCircle2, Search } from "lucide-react";
