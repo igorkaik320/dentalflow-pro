@@ -11,10 +11,10 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useClinic } from "@/contexts/ClinicContext";
 import { clearPersistentState, usePersistentState } from "@/hooks/usePersistentState";
 import { db } from "@/lib/clinicCloud";
-import { formatCurrency, parseCurrencyInput } from "@/lib/utils";
+import { formatCurrency, parseCurrencyInput, onlyDigits } from "@/lib/utils";
 import type { FinancialCategory, Payable, PayableInstallment, Professional, Receivable, Supplier } from "@/data/mockData";
 import { toast } from "sonner";
-import { DollarSign, ArrowUpCircle, ArrowDownCircle, Plus, Edit2, Trash2, CalendarDays, CheckCircle2 } from "lucide-react";
+import { DollarSign, ArrowUpCircle, ArrowDownCircle, Plus, Edit2, Trash2, CalendarDays, CheckCircle2, Search } from "lucide-react";
 
 type BankAccountRow = { id: string; name: string; initialDate: string; initialBalance: number; active: boolean };
 
@@ -350,21 +350,32 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
     paidPayables: payableTotals.paid,
   }), [receivables, payableTotals]);
 
+  const clientById = useMemo(() => new Map(clients.map((client) => [client.id, client])), [clients]);
+  const supplierById = useMemo(() => new Map(suppliers.map((supplier) => [supplier.id, supplier])), [suppliers]);
+
   const filteredReceivables = useMemo(() => {
     const term = normalizeText(receivableFilter);
+    const digits = onlyDigits(receivableFilter);
     return receivables.filter((item) => {
-      const text = normalizeText(`${item.patientName} ${item.procedure} ${item.professionalName} ${item.paymentMethod}`);
-      return (!term || text.includes(term)) && isWithinPeriod(item.dueDate, receivableStart, receivableEnd);
+      const client = item.patientId ? clientById.get(item.patientId) : undefined;
+      const text = normalizeText(`${item.patientName} ${item.procedure} ${item.professionalName} ${item.paymentMethod} ${client?.cpf || ""}`);
+      const numeric = onlyDigits(client?.cpf || "");
+      const matches = !term || text.includes(term) || (!!digits && numeric.includes(digits));
+      return matches && isWithinPeriod(item.dueDate, receivableStart, receivableEnd);
     });
-  }, [receivables, receivableFilter, receivableStart, receivableEnd]);
+  }, [receivables, receivableFilter, receivableStart, receivableEnd, clientById]);
 
   const filteredPayables = useMemo(() => {
     const term = normalizeText(payableFilter);
+    const digits = onlyDigits(payableFilter);
     return payables.filter((item) => {
-      const text = normalizeText(`${item.supplier} ${item.description} ${item.category} ${item.companyName || ""}`);
-      return (!term || text.includes(term)) && isWithinPeriod(item.dueDate, payableStart, payableEnd);
+      const supplier = item.supplierId ? supplierById.get(item.supplierId) : undefined;
+      const text = normalizeText(`${item.supplier} ${item.description} ${item.category} ${item.companyName || ""} ${supplier?.legalName || ""} ${supplier?.document || ""} ${supplier?.cnpj || ""}`);
+      const numeric = onlyDigits(`${supplier?.document || ""} ${supplier?.cnpj || ""}`);
+      const matches = !term || text.includes(term) || (!!digits && numeric.includes(digits));
+      return matches && isWithinPeriod(item.dueDate, payableStart, payableEnd);
     });
-  }, [payables, payableFilter, payableStart, payableEnd]);
+  }, [payables, payableFilter, payableStart, payableEnd, supplierById]);
 
   const cashEntries = useMemo(() => {
     const income = receivables
@@ -768,7 +779,7 @@ function FinanceFilters({ searchLabel, search, onSearch, start, onStart, end, on
   return (
     <Card className="p-3 mb-3">
       <div className="grid grid-cols-1 md:grid-cols-[1fr_180px_180px] gap-3">
-        <div><Label>{searchLabel}</Label><Input value={search} onChange={(event) => onSearch(event.target.value)} placeholder="Digite para pesquisar" /></div>
+        <div><Label>{searchLabel}</Label><div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input className="pl-9" value={search} onChange={(event) => onSearch(event.target.value)} placeholder="Nome, razão social ou CPF/CNPJ" /></div></div>
         <div><Label>Data inicial</Label><Input type="date" value={start} onChange={(event) => onStart(event.target.value)} /></div>
         <div><Label>Data final</Label><Input type="date" value={end} onChange={(event) => onEnd(event.target.value)} /></div>
       </div>
