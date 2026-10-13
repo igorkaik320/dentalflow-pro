@@ -323,7 +323,6 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
   const clientOptions = useMemo(() => clients.map((client, i) => ({ id: client.id, code: String(i + 1), label: client.name, document: client.cpf || "", description: client.cpf || undefined, search: client.cpf || "" })), [clients]);
   const procedureOptions = useMemo(() => procedures.filter(p => p.companyId === recForm.companyId).map((procedure) => ({
     id: procedure.id,
-      companyId: procedure.company_id || undefined,
     label: procedure.name,
     description: formatCurrency(procedure.defaultPrice),
     search: `${procedure.defaultPrice} ${procedure.averageDuration}`,
