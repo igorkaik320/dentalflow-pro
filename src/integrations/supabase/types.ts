@@ -996,6 +996,7 @@ export type Database = {
         Row: {
           amount: number
           bank_account_id: string | null
+          category: string | null
           clinic_id: string
           company_id: string | null
           company_name: string | null
@@ -1017,6 +1018,7 @@ export type Database = {
         Insert: {
           amount?: number
           bank_account_id?: string | null
+          category?: string | null
           clinic_id: string
           company_id?: string | null
           company_name?: string | null
@@ -1038,6 +1040,7 @@ export type Database = {
         Update: {
           amount?: number
           bank_account_id?: string | null
+          category?: string | null
           clinic_id?: string
           company_id?: string | null
           company_name?: string | null
