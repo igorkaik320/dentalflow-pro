@@ -1,0 +1,2 @@
+ALTER TABLE public.bank_accounts DROP CONSTRAINT bank_accounts_account_type_check;
+ALTER TABLE public.bank_accounts ADD CONSTRAINT bank_accounts_account_type_check CHECK (account_type IN ('corrente','poupanca','caixa','investimento'));

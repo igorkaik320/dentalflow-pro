@@ -25,6 +25,7 @@ export interface Professional {
 }
 
 export interface Procedure {
+  companyId?: string;
   id: string;
   name: string;
   defaultPrice: number;
