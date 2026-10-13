@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EntitySearchInput, type EntitySearchOption } from "@/components/EntitySearchInput";
+import { CashControl } from "@/components/CashControl";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useClinic } from "@/contexts/ClinicContext";
 import { clearPersistentState, usePersistentState } from "@/hooks/usePersistentState";
@@ -17,11 +18,11 @@ import { toast } from "sonner";
 import { DollarSign, ArrowUpCircle, ArrowDownCircle, Plus, Edit2, Trash2, CalendarDays, CheckCircle2, Search } from "lucide-react";
 
 type CompanyRow = { id: string; name: string; legalName: string; cnpj: string; active: boolean };
-type BankAccountRow = { id: string; name: string; initialDate: string; initialBalance: number; active: boolean };
+type BankAccountRow = { id: string; name: string; initialDate: string; initialBalance: number; active: boolean; companyId?: string; accountType: string };
 
 type ReceivableForm = Omit<Receivable, "id" | "professionalId">;
 type ClientOption = { id: string; name: string; cpf?: string };
-type ProcedureOption = { id: string; name: string; defaultPrice: number; averageDuration: number };
+type ProcedureOption = { companyId?: string; id: string; name: string; defaultPrice: number; averageDuration: number };
 type FinancialStatus = "open" | "paid" | "overdue";
 type InstallmentForm = Omit<PayableInstallment, "payableId">;
 type PayableWithInstallments = Payable & { supplierId?: string; installments: PayableInstallment[] };
@@ -231,7 +232,7 @@ function mapSupplier(row: any): Supplier {
 
 export default function FinancialPage({ section }: { section: "receivables" | "payables" | "cashflow" }) {
   const activeTab = section;
-  const { clinic, user } = useClinic();
+  const { clinic } = useClinic();
   const [receivables, setReceivables] = useState<Receivable[]>([]);
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [procedures, setProcedures] = useState<ProcedureOption[]>([]);
@@ -239,7 +240,6 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [categories, setCategories] = useState<FinancialCategory[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [cashSession, setCashSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [receivableFilter, setReceivableFilter] = usePersistentState(storageKeys.receivableFilter, "");
   const [receivableStart, setReceivableStart] = usePersistentState(storageKeys.receivableStart, "");
@@ -247,9 +247,6 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
   const [payableFilter, setPayableFilter] = usePersistentState(storageKeys.payableFilter, "");
   const [payableStart, setPayableStart] = usePersistentState(storageKeys.payableStart, "");
   const [payableEnd, setPayableEnd] = usePersistentState(storageKeys.payableEnd, "");
-  const [cashFilter, setCashFilter] = usePersistentState(storageKeys.cashFilter, "");
-  const [cashStart, setCashStart] = usePersistentState(storageKeys.cashStart, "");
-  const [cashEnd, setCashEnd] = usePersistentState(storageKeys.cashEnd, "");
 
   const [showRecForm, setShowRecForm] = usePersistentState(storageKeys.showReceivableForm, false);
   const [editingRec, setEditingRec] = useState<Receivable | null>(null);
@@ -290,20 +287,19 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
   const loadData = async () => {
     if (!clinic.id) return;
     setLoading(true);
-    const [recRes, payRes, profRes, catRes, supplierRes, clientRes, procedureRes, cashRes] = await Promise.all([
+    const [recRes, payRes, profRes, catRes, supplierRes, clientRes, procedureRes] = await Promise.all([
       db.from("receivables").select("*").eq("clinic_id", clinic.id).order("due_date", { ascending: false }),
       db.from("payables").select("*, payable_installments(*)").eq("clinic_id", clinic.id).order("due_date", { ascending: false }),
       db.from("professionals").select("*").eq("clinic_id", clinic.id).order("name"),
       db.from("financial_categories").select("*").eq("clinic_id", clinic.id).order("type").order("name"),
       db.from("suppliers").select("*").eq("clinic_id", clinic.id).order("name"),
       db.from("patients").select("id, name, cpf").eq("clinic_id", clinic.id).order("name"),
-      db.from("procedures").select("id, name, default_price, average_duration").eq("clinic_id", clinic.id).order("name"),
-      db.from("cash_sessions").select("*").eq("clinic_id", clinic.id).is("closed_at", null).order("opened_at", { ascending: false }).limit(1).maybeSingle(),
+      db.from("procedures").select("id, name, default_price, average_duration, company_id").eq("clinic_id", clinic.id).order("name"),
     ]);
     const bankRes = await db.from("bank_accounts").select("*").eq("clinic_id", clinic.id).order("bank_name");
-    setBankAccounts((bankRes.data || []).map((b: any) => ({ id: b.id, name: `${b.bank_name} · Ag ${b.agency} · CC ${b.account_number}`, initialDate: b.initial_date, initialBalance: Number(b.initial_balance || 0), active: Boolean(b.active) })));
+    setBankAccounts((bankRes.data || []).map((b: any) => ({ id: b.id, companyId: b.company_id || undefined, accountType: b.account_type, name: `${b.bank_name} · Ag ${b.agency} · CC ${b.account_number}`, initialDate: b.initial_date, initialBalance: Number(b.initial_balance || 0), active: Boolean(b.active) })));
     setLoading(false);
-    const error = recRes.error || payRes.error || profRes.error || catRes.error || supplierRes.error || clientRes.error || procedureRes.error || cashRes.error;
+    const error = recRes.error || payRes.error || profRes.error || catRes.error || supplierRes.error || clientRes.error || procedureRes.error;
     if (error) return toast.error("Nao foi possivel carregar o financeiro. Verifique se a migration de parcelas foi aplicada.");
     setReceivables((recRes.data || []).map(mapReceivable));
     setPayables((payRes.data || []).map(mapPayable));
@@ -313,11 +309,11 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
     setClients((clientRes.data || []).map((client: any) => ({ id: client.id, name: client.name || "", cpf: client.cpf || "" })));
     setProcedures((procedureRes.data || []).map((procedure: any) => ({
       id: procedure.id,
+      companyId: procedure.company_id || undefined,
       name: procedure.name || "",
       defaultPrice: Number(procedure.default_price || 0),
       averageDuration: Number(procedure.average_duration || 30),
     })));
-    setCashSession(cashRes.data || null);
   };
 
   const incomeCategories = useMemo(() => categories.filter(c => c.type === "income"), [categories]);
@@ -325,12 +321,13 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
   const incomeCategoryOptions = useMemo(() => incomeCategories.map((category) => ({ id: category.id, label: category.name, description: "Receita" })), [incomeCategories]);
   const expenseCategoryOptions = useMemo(() => expenseCategories.map((category) => ({ id: category.id, label: category.name, description: "Despesa" })), [expenseCategories]);
   const clientOptions = useMemo(() => clients.map((client, i) => ({ id: client.id, code: String(i + 1), label: client.name, document: client.cpf || "", description: client.cpf || undefined, search: client.cpf || "" })), [clients]);
-  const procedureOptions = useMemo(() => procedures.map((procedure) => ({
+  const procedureOptions = useMemo(() => procedures.filter(p => p.companyId === recForm.companyId).map((procedure) => ({
     id: procedure.id,
+      companyId: procedure.company_id || undefined,
     label: procedure.name,
     description: formatCurrency(procedure.defaultPrice),
     search: `${procedure.defaultPrice} ${procedure.averageDuration}`,
-  })), [procedures]);
+  })), [procedures, recForm.companyId]);
   const supplierOptions = useMemo(() => suppliers.map((supplier, i) => ({
     id: supplier.id,
     code: String(i + 1),
@@ -404,53 +401,16 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
   }), [filteredReceivables]);
   const payableInstallmentRows = useMemo(() => filteredPayables.flatMap((p) => (p.installments.length ? p.installments : []).map((inst) => ({ key: inst.id, pay: p, inst, count: p.installments.length }))), [filteredPayables]);
 
-  const cashEntries = useMemo(() => {
-    const income = receivables
-      .filter((item) => item.status === "paid")
-      .map((item) => ({
-        id: `rec-${item.id}`,
-        type: "income" as const,
-        title: `${item.procedure} - ${item.patientName}`,
-        subtitle: `${item.paymentMethod}${item.professionalName ? ` - ${item.professionalName}` : ""}`,
-        date: item.paidDate || item.dueDate,
-        amount: item.amount,
-      }));
-    const expenses = payableTotals.installments
-      .filter((item) => item.status === "paid")
-      .map((item) => {
-        const payable = payables.find((pay) => pay.id === item.payableId);
-        return {
-          id: `pay-${item.id}`,
-          type: "expense" as const,
-          title: payable ? `${payable.supplier} - Parcela ${item.installmentNumber}` : `Parcela ${item.installmentNumber}`,
-          subtitle: payable?.description || "",
-          date: item.paidDate || item.dueDate,
-          amount: item.paidAmount ?? item.amount,
-        };
-      });
-    return [...income, ...expenses].sort((a, b) => b.date.localeCompare(a.date));
-  }, [receivables, payableTotals.installments, payables]);
-
-  const filteredCashEntries = useMemo(() => {
-    const term = normalizeText(cashFilter);
-    return cashEntries.filter((item) => {
-      const text = normalizeText(`${item.title} ${item.subtitle}`);
-      return (!term || text.includes(term)) && isWithinPeriod(item.date, cashStart, cashEnd);
-    });
-  }, [cashEntries, cashFilter, cashStart, cashEnd]);
-
-  const accountBalances = useMemo(() => bankAccounts.map((acc) => {
-    const inflow = receivables.filter((r) => r.status === "paid" && r.bankAccountId === acc.id && (r.paidDate || "") >= acc.initialDate).reduce((a, b) => a + b.amount, 0);
-    const outflow = payableTotals.installments.filter((i) => i.status === "paid" && i.bankAccountId === acc.id && (i.paidDate || "") >= acc.initialDate).reduce((a, b) => a + (b.paidAmount ?? b.amount), 0);
-    return { ...acc, inflow, outflow, balance: acc.initialBalance + inflow - outflow };
-  }), [bankAccounts, receivables, payableTotals.installments]);
-
   const toggle = (list: string[], set: (v: string[]) => void, id: string) => set(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
 
   const settleSelected = async () => {
     if (!clinic.id) return;
     if (!settleAccount) return toast.error("Selecione a conta corrente.");
     if (!settleDate) return toast.error("Informe a data da baixa.");
+    const account = bankAccounts.find(a => a.id === settleAccount && a.active);
+    const targets = section === "receivables" ? receivables.filter(r => selectedRec.includes(r.id)) : payables.filter(p => selectedPay.includes(p.id));
+    if (!account?.companyId || targets.some(t => t.companyId !== account.companyId)) return toast.error("Selecione lançamentos e conta da mesma empresa.");
+    if (settleDate < account.initialDate) return toast.error("A baixa não pode ser anterior à data inicial da conta.");
     setSettling(true);
     try {
       if (section === "receivables") {
@@ -493,6 +453,7 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
       status: rec.status,
       dueDate: rec.dueDate,
       paidDate: rec.paidDate,
+      bankAccountId: rec.bankAccountId,
       companyId: rec.companyId,
       companyName: rec.companyName,
     } : (hasReceivableDraft(recForm) ? recForm : emptyReceivable));
@@ -553,6 +514,7 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
     const client = clients.find((item) => item.id === recForm.patientId);
     if (!client) return toast.error("Informe o cliente.");
     if (!recForm.companyId) return toast.error("Selecione a empresa do lançamento.");
+    if (editingRec?.bankAccountId && editingRec.companyId !== recForm.companyId) return toast.error("Estorne a baixa antes de mudar a empresa.");
     const payload = {
       clinic_id: clinic.id,
       patient_id: client.id,
@@ -588,6 +550,7 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
     if (!clinic.id) return toast.error("Clinica nao vinculada. Verifique o cadastro da clinica atual.");
     if (!payForm.supplier.trim()) return toast.error("Informe o fornecedor.");
     if (!payForm.companyId) return toast.error("Selecione a empresa do lançamento.");
+    if (editingPay?.installments.some(i => i.bankAccountId) && editingPay.companyId !== payForm.companyId) return toast.error("Estorne as baixas antes de mudar a empresa.");
     const installments = payForm.installments.length ? payForm.installments : buildInstallments(payForm.amount, payForm.installmentsCount, payForm.dueDate);
     const aggregate = aggregateStatus(installments.map((item) => ({ ...item, payableId: editingPay?.id || "" })), payForm.status);
     const paidDate = aggregate === "paid" ? installments[installments.length - 1]?.paidDate || today() : null;
@@ -709,45 +672,14 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
     toast.success("Status atualizado.");
   };
 
-  const openCash = async () => {
-    if (!clinic.id) return toast.error("Clinica nao vinculada. Verifique o cadastro da clinica atual.");
-    if (cashSession) return toast.error("Ja existe um caixa aberto.");
-    const { data, error } = await db.from("cash_sessions").insert({
-      clinic_id: clinic.id,
-      opened_by: user?.id || null,
-      opening_balance: totals.totalPaid - totals.paidPayables,
-    }).select().single();
-    if (error) return toast.error("Nao foi possivel abrir o caixa. Verifique se a migration cash_sessions foi aplicada.");
-    setCashSession(data);
-    toast.success("Caixa aberto com sucesso.");
-  };
-
-  const closeCash = async () => {
-    if (!clinic.id || !cashSession) return toast.error("Nao ha caixa aberto.");
-    const closingBalance = totals.totalPaid - totals.paidPayables;
-    const { data, error } = await db.from("cash_sessions").update({
-      closed_by: user?.id || null,
-      closed_at: new Date().toISOString(),
-      closing_balance: closingBalance,
-    }).eq("id", cashSession.id).eq("clinic_id", clinic.id).select().single();
-    if (error) return toast.error("Nao foi possivel fechar o caixa.");
-    setCashSession(null);
-    toast.success(`Caixa fechado com saldo de ${formatCurrency(Number(data.closing_balance || closingBalance))}.`);
-  };
-
   return (
     <ClinicLayout title={section === "receivables" ? "Contas a Receber" : section === "payables" ? "Contas a Pagar" : "Controle de Caixa"} subtitle="Financeiro · Virtuosa">
       <div className="space-y-6 animate-fade-in">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {activeTab !== "cashflow" && <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {activeTab === "payables" ? (
             <>
               <StatCard label="Contas a Pagar" value={totals.totalPayables} icon={ArrowDownCircle} tone="danger" />
               <StatCard label="Contas Pagas" value={totals.paidPayables} icon={DollarSign} tone="primary" />
-            </>
-          ) : activeTab === "cashflow" ? (
-            <>
-              <StatCard label="Entradas" value={totals.totalPaid} icon={ArrowUpCircle} tone="success" />
-              <StatCard label="Saidas" value={totals.paidPayables} icon={ArrowDownCircle} tone="danger" />
             </>
           ) : (
             <>
@@ -755,7 +687,7 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
               <StatCard label="Contas Recebidas" value={totals.totalPaid} icon={DollarSign} tone="primary" />
             </>
           )}
-        </div>
+        </div>}
 
 
 
@@ -783,17 +715,17 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
             </FinanceTable></>}
           </div>}
 
-          {activeTab === "cashflow" && <div><Card className="p-5 mb-4"><h3 className="text-sm font-semibold mb-3">Saldo por conta corrente</h3>{accountBalances.length === 0 ? <p className="text-sm text-muted-foreground">Nenhuma conta corrente cadastrada. Cadastre em Cadastros › Contas Correntes.</p> : <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-border bg-muted/50 text-xs text-muted-foreground"><th className="p-2 text-left">Conta</th><th className="p-2 text-left">Data inicial</th><th className="p-2 text-right">Saldo inicial</th><th className="p-2 text-right">Entradas</th><th className="p-2 text-right">Saidas</th><th className="p-2 text-right">Saldo atual</th></tr></thead><tbody>{accountBalances.map(a => <tr key={a.id} className="border-b border-border/50"><td className="p-2 font-medium">{a.name}</td><td className="p-2 text-muted-foreground">{new Date(a.initialDate + "T12:00:00").toLocaleDateString("pt-BR")}</td><td className="p-2 text-right">{formatCurrency(a.initialBalance)}</td><td className="p-2 text-right text-success">{formatCurrency(a.inflow)}</td><td className="p-2 text-right text-destructive">{formatCurrency(a.outflow)}</td><td className="p-2 text-right font-semibold text-primary">{formatCurrency(a.balance)}</td></tr>)}<tr className="font-semibold"><td className="p-2" colSpan={2}>Total</td><td className="p-2 text-right">{formatCurrency(accountBalances.reduce((s, a) => s + a.initialBalance, 0))}</td><td className="p-2 text-right text-success">{formatCurrency(accountBalances.reduce((s, a) => s + a.inflow, 0))}</td><td className="p-2 text-right text-destructive">{formatCurrency(accountBalances.reduce((s, a) => s + a.outflow, 0))}</td><td className="p-2 text-right text-primary">{formatCurrency(accountBalances.reduce((s, a) => s + a.balance, 0))}</td></tr></tbody></table></div>}</Card><Card className="p-5"><div className="flex items-center justify-between mb-4"><div><h3 className="text-sm font-semibold">Controle de Caixa</h3><p className="text-xs text-muted-foreground">{cashSession ? `Aberto desde ${new Date(cashSession.opened_at).toLocaleString("pt-BR")}` : "Nenhum caixa aberto"}</p></div><div className="flex gap-2"><Button size="sm" variant="outline" onClick={openCash} disabled={!!cashSession}>Abrir Caixa</Button><Button size="sm" variant="destructive" onClick={closeCash} disabled={!cashSession}>Fechar Caixa</Button></div></div><FinanceFilters searchLabel="Pesquisar cliente ou credor" search={cashFilter} onSearch={setCashFilter} start={cashStart} onStart={setCashStart} end={cashEnd} onEnd={setCashEnd} /><div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6"><div className="p-3 rounded-lg bg-muted/50 text-center"><p className="text-xs text-muted-foreground">Saldo Inicial</p><p className="text-lg font-bold text-foreground">{formatCurrency(Number(cashSession?.opening_balance || 0))}</p></div><div className="p-3 rounded-lg bg-success/10 text-center"><p className="text-xs text-muted-foreground">Entradas</p><p className="text-lg font-bold text-success">{formatCurrency(totals.totalPaid)}</p></div><div className="p-3 rounded-lg bg-destructive/10 text-center"><p className="text-xs text-muted-foreground">Saidas</p><p className="text-lg font-bold text-destructive">{formatCurrency(totals.paidPayables)}</p></div><div className="p-3 rounded-lg bg-primary/10 text-center"><p className="text-xs text-muted-foreground">Saldo Final</p><p className="text-lg font-bold text-primary">{formatCurrency(totals.totalPaid - totals.paidPayables)}</p></div></div><div className="space-y-2">{filteredCashEntries.slice(0, 20).map(entry => <div key={entry.id} className={`flex justify-between items-center p-3 rounded border-l-2 ${entry.type === "income" ? "bg-success/5 border-success" : "bg-destructive/5 border-destructive"}`}><div><p className="text-sm font-medium text-foreground">{entry.title}</p><p className="text-xs text-muted-foreground">{new Date(entry.date + "T12:00:00").toLocaleDateString("pt-BR")}{entry.subtitle ? ` - ${entry.subtitle}` : ""}</p></div><p className={`text-sm font-semibold ${entry.type === "income" ? "text-success" : "text-destructive"}`}>{entry.type === "income" ? "+" : "-"} {formatCurrency(entry.amount)}</p></div>)}{filteredCashEntries.length === 0 && <div className="p-8 text-center text-sm text-muted-foreground">Nenhum movimento encontrado.</div>}</div></Card></div>}
+          {activeTab === "cashflow" && <CashControl />}
 
 
-        <Dialog open={showRecForm} onOpenChange={open => { setShowRecForm(open); if (!open) setEditingRec(null); }}><DialogContent><DialogHeader><DialogTitle>{editingRec ? "Editar Conta a Receber" : "Nova Conta a Receber"}</DialogTitle></DialogHeader><div className="grid grid-cols-2 gap-3 mt-2"><div className="col-span-2"><Label>Empresa *</Label><Select value={recForm.companyId || ""} onValueChange={v => setRecForm({ ...recForm, companyId: v, companyName: companyName(v) })}><SelectTrigger><SelectValue placeholder={companies.length ? "Selecione a empresa" : "Cadastre empresas em Cadastros"} /></SelectTrigger><SelectContent>{companies.filter(c => c.active || c.id === recForm.companyId).map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select></div><div className="col-span-2"><EntitySearchInput advanced label="Cliente" value={recForm.patientName} options={clientOptions} placeholder="Digite para procurar cliente" onQueryChange={patientName => setRecForm({ ...recForm, patientName, patientId: "" })} onSelect={option => setRecForm({ ...recForm, patientId: option.id, patientName: option.label })} /></div><div className="col-span-2"><EntitySearchInput label="Procedimento" value={recForm.procedure} options={procedureOptions} allowCustom placeholder="Digite para procurar procedimento" onQueryChange={procedure => setRecForm({ ...recForm, procedure })} onSelect={option => setRecForm({ ...recForm, procedure: option.label })} /></div><div className="col-span-2"><EntitySearchInput label="Categoria" value={recForm.category || ""} options={incomeCategoryOptions} allowCustom placeholder="Digite para procurar categoria de receita" onQueryChange={category => setRecForm({ ...recForm, category })} onSelect={option => setRecForm({ ...recForm, category: option.label })} /></div><div><Label>Valor</Label><Input inputMode="numeric" value={formatCurrency(recForm.amount)} onChange={e => setRecForm({ ...recForm, amount: parseCurrencyInput(e.target.value) })} /></div><div><Label>Parcelas</Label><Input type="number" value={recForm.installments} onChange={e => setRecForm({ ...recForm, installments: Number(e.target.value) })} /></div><div><Label>Forma de Pagamento</Label><Select value={recForm.paymentMethod} onValueChange={paymentMethod => setRecForm({ ...recForm, paymentMethod })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{paymentMethods.map(method => <SelectItem key={method} value={method}>{method}</SelectItem>)}</SelectContent></Select></div><div><Label>Vencimento</Label><Input type="date" value={recForm.dueDate} onChange={e => setRecForm({ ...recForm, dueDate: e.target.value })} /></div><div className="col-span-2"><Label>Status</Label><Select value={recForm.status} onValueChange={(status: "open" | "paid" | "overdue") => setRecForm({ ...recForm, status })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="open">Aberto</SelectItem><SelectItem value="paid">Pago</SelectItem><SelectItem value="overdue">Atrasado</SelectItem></SelectContent></Select></div></div><div className="flex justify-end gap-2 mt-4"><Button variant="outline" onClick={() => setShowRecForm(false)}>Cancelar</Button><Button onClick={saveReceivable}>{editingRec ? "Atualizar" : "Salvar"}</Button></div></DialogContent></Dialog>
+        <Dialog open={showRecForm} onOpenChange={open => { setShowRecForm(open); if (!open) setEditingRec(null); }}><DialogContent><DialogHeader><DialogTitle>{editingRec ? "Editar Conta a Receber" : "Nova Conta a Receber"}</DialogTitle></DialogHeader><div className="grid grid-cols-2 gap-3 mt-2"><div className="col-span-2"><Label>Empresa *</Label><Select value={recForm.companyId || ""} onValueChange={v => setRecForm({ ...recForm, companyId: v, companyName: companyName(v), procedure: "" })}><SelectTrigger><SelectValue placeholder={companies.length ? "Selecione a empresa" : "Cadastre empresas em Cadastros"} /></SelectTrigger><SelectContent>{companies.filter(c => c.active || c.id === recForm.companyId).map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select></div><div className="col-span-2"><EntitySearchInput advanced label="Cliente" value={recForm.patientName} options={clientOptions} placeholder="Digite para procurar cliente" onQueryChange={patientName => setRecForm({ ...recForm, patientName, patientId: "" })} onSelect={option => setRecForm({ ...recForm, patientId: option.id, patientName: option.label })} /></div><div className="col-span-2"><EntitySearchInput label="Procedimento" value={recForm.procedure} options={procedureOptions} allowCustom placeholder="Digite para procurar procedimento" onQueryChange={procedure => setRecForm({ ...recForm, procedure })} onSelect={option => setRecForm({ ...recForm, procedure: option.label })} /></div><div className="col-span-2"><EntitySearchInput label="Categoria" value={recForm.category || ""} options={incomeCategoryOptions} allowCustom placeholder="Digite para procurar categoria de receita" onQueryChange={category => setRecForm({ ...recForm, category })} onSelect={option => setRecForm({ ...recForm, category: option.label })} /></div><div><Label>Valor</Label><Input inputMode="numeric" value={formatCurrency(recForm.amount)} onChange={e => setRecForm({ ...recForm, amount: parseCurrencyInput(e.target.value) })} /></div><div><Label>Parcelas</Label><Input type="number" value={recForm.installments} onChange={e => setRecForm({ ...recForm, installments: Number(e.target.value) })} /></div><div><Label>Forma de Pagamento</Label><Select value={recForm.paymentMethod} onValueChange={paymentMethod => setRecForm({ ...recForm, paymentMethod })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{paymentMethods.map(method => <SelectItem key={method} value={method}>{method}</SelectItem>)}</SelectContent></Select></div><div><Label>Vencimento</Label><Input type="date" value={recForm.dueDate} onChange={e => setRecForm({ ...recForm, dueDate: e.target.value })} /></div><div className="col-span-2"><Label>Status</Label><Select value={recForm.status} onValueChange={(status: "open" | "paid" | "overdue") => setRecForm({ ...recForm, status })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="open">Aberto</SelectItem><SelectItem value="paid">Pago</SelectItem><SelectItem value="overdue">Atrasado</SelectItem></SelectContent></Select></div></div><div className="flex justify-end gap-2 mt-4"><Button variant="outline" onClick={() => setShowRecForm(false)}>Cancelar</Button><Button onClick={saveReceivable}>{editingRec ? "Atualizar" : "Salvar"}</Button></div></DialogContent></Dialog>
 
         <Dialog open={showPayForm} onOpenChange={open => { setShowPayForm(open); if (!open) setEditingPay(null); }}><DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto"><DialogHeader><DialogTitle>{editingPay ? "Editar Conta a Pagar" : "Nova Conta a Pagar"}</DialogTitle></DialogHeader><div className="grid grid-cols-2 gap-3 mt-2"><div className="col-span-2"><Label>Empresa *</Label><Select value={payForm.companyId || ""} onValueChange={v => setPayForm({ ...payForm, companyId: v, companyName: companyName(v) })}><SelectTrigger><SelectValue placeholder={companies.length ? "Selecione a empresa" : "Cadastre empresas em Cadastros"} /></SelectTrigger><SelectContent>{companies.filter(c => c.active || c.id === payForm.companyId).map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select></div><div className="col-span-2"><EntitySearchInput advanced label="Credor" value={payForm.supplier} options={supplierOptions} allowCustom placeholder="Digite para procurar credor" onQueryChange={supplier => setPayForm({ ...payForm, supplier, supplierId: undefined })} onSelect={option => setPayForm({ ...payForm, supplierId: option.id, supplier: option.label })} /></div><div className="col-span-2"><Label>Descricao</Label><Input value={payForm.description} onChange={e => setPayForm({ ...payForm, description: e.target.value })} /></div><div><EntitySearchInput label="Categoria" value={payForm.category || ""} options={expenseCategoryOptions} allowCustom placeholder="Digite para procurar categoria de despesa" onQueryChange={category => setPayForm({ ...payForm, category })} onSelect={option => setPayForm({ ...payForm, category: option.label })} /></div><div><Label>Valor total</Label><Input inputMode="numeric" value={formatCurrency(payForm.amount)} onChange={e => setPayForm({ ...payForm, amount: parseCurrencyInput(e.target.value) })} /></div><div><Label>Primeiro vencimento</Label><Input type="date" value={payForm.dueDate} onChange={e => setPayForm({ ...payForm, dueDate: e.target.value })} /></div><div><Label>Quantidade de parcelas</Label><Input type="number" min={1} value={payForm.installmentsCount} onChange={e => setPayForm({ ...payForm, installmentsCount: Math.max(1, Number(e.target.value || 1)) })} /></div><div><Label>Data de emissao</Label><Input type="date" value={payForm.issueDate || ""} onChange={e => setPayForm({ ...payForm, issueDate: e.target.value })} /></div><div><Label>Empresa</Label><Input value={payForm.companyName || ""} onChange={e => setPayForm({ ...payForm, companyName: e.target.value })} /></div></div><div className="mt-5 flex items-center justify-between"><div><h3 className="text-sm font-semibold">Parcelas</h3><p className="text-xs text-muted-foreground">Edite vencimento, valor e status de cada parcela.</p></div><Button type="button" variant="outline" size="sm" onClick={regeneratePayableInstallments}><CalendarDays className="h-3.5 w-3.5 mr-1" />Gerar parcelas</Button></div><div className="mt-3 overflow-x-auto rounded-md border border-border"><table className="w-full"><thead><tr className="border-b border-border bg-muted/50"><th className="text-left text-xs font-medium text-muted-foreground p-3">Parcela</th><th className="text-left text-xs font-medium text-muted-foreground p-3">Vencimento</th><th className="text-right text-xs font-medium text-muted-foreground p-3">Valor</th><th className="text-left text-xs font-medium text-muted-foreground p-3">Status</th><th className="text-left text-xs font-medium text-muted-foreground p-3">Pagamento</th><th className="text-left text-xs font-medium text-muted-foreground p-3">Obs.</th><th className="w-12 p-3"><span className="sr-only">Excluir</span></th></tr></thead><tbody>{payForm.installments.map((installment, index) => <tr key={`${installment.id}-${installment.installmentNumber}`} className="border-b border-border/50"><td className="p-2 text-sm font-medium">{installment.installmentNumber}</td><td className="p-2"><Input type="date" value={installment.dueDate} onChange={e => updateInstallment(index, { dueDate: e.target.value, status: normalizeInstallmentStatus(installment.status, e.target.value) })} /></td><td className="p-2"><Input className="text-right" inputMode="numeric" value={formatCurrency(installment.amount)} onChange={e => updateInstallment(index, { amount: parseCurrencyInput(e.target.value) })} /></td><td className="p-2"><Select value={installment.status} onValueChange={(status: "open" | "paid" | "overdue") => updateInstallment(index, { status, paidDate: status === "paid" ? (installment.paidDate || today()) : undefined, paidAmount: status === "paid" ? (installment.paidAmount ?? installment.amount) : undefined })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="open">Aberta</SelectItem><SelectItem value="paid">Paga</SelectItem><SelectItem value="overdue">Atrasada</SelectItem></SelectContent></Select></td><td className="p-2"><Input type="date" value={installment.paidDate || ""} disabled={installment.status !== "paid"} onChange={e => updateInstallment(index, { paidDate: e.target.value })} /></td><td className="p-2"><Input value={installment.notes || ""} onChange={e => updateInstallment(index, { notes: e.target.value })} /></td><td className="p-2 text-right"><Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive" onClick={() => removeInstallment(index)}><Trash2 className="h-3.5 w-3.5" /></Button></td></tr>)}</tbody></table></div><div className="flex justify-end gap-2 mt-4"><Button variant="outline" onClick={() => setShowPayForm(false)}>Cancelar</Button><Button onClick={savePayable}>{editingPay ? "Atualizar" : "Salvar"}</Button></div></DialogContent></Dialog>
 
         <ConfirmDialog open={!!deleteRecId} onOpenChange={() => setDeleteRecId(null)} title="Excluir Conta a Receber" description="Tem certeza que deseja excluir esta conta?" onConfirm={() => deleteRecId && deleteRecord("receivables", deleteRecId)} />
         <ConfirmDialog open={!!deletePayId} onOpenChange={() => setDeletePayId(null)} title="Excluir Conta a Pagar" description="Tem certeza que deseja excluir esta conta e suas parcelas?" onConfirm={() => deletePayId && deleteRecord("payables", deletePayId)} />
       </div>
-    <Dialog open={settleOpen} onOpenChange={setSettleOpen}><DialogContent className="max-w-md"><DialogHeader><DialogTitle>Baixar lancamentos</DialogTitle></DialogHeader><div className="space-y-4"><p className="text-sm text-muted-foreground">{section === "receivables" ? selectedRec.length : selectedPay.length} lancamento(s) selecionado(s)</p><div className="space-y-1.5"><Label>Conta corrente</Label><Select value={settleAccount} onValueChange={setSettleAccount}><SelectTrigger><SelectValue placeholder="Selecione a conta" /></SelectTrigger><SelectContent>{bankAccounts.filter(a => a.active).map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}</SelectContent></Select>{bankAccounts.length === 0 && <p className="text-xs text-muted-foreground">Cadastre uma conta em Cadastros › Contas Correntes.</p>}</div><div className="space-y-1.5"><Label>Data da baixa</Label><Input type="date" value={settleDate} onChange={(e) => setSettleDate(e.target.value)} /></div><div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setSettleOpen(false)}>Cancelar</Button><Button onClick={settleSelected} disabled={settling}>{settling ? "Baixando..." : "Baixar"}</Button></div></div></DialogContent></Dialog>
+    <Dialog open={settleOpen} onOpenChange={setSettleOpen}><DialogContent className="max-w-md"><DialogHeader><DialogTitle>Baixar lancamentos</DialogTitle></DialogHeader><div className="space-y-4"><p className="text-sm text-muted-foreground">{section === "receivables" ? selectedRec.length : selectedPay.length} lancamento(s) selecionado(s)</p><div className="space-y-1.5"><Label>Conta corrente</Label><Select value={settleAccount} onValueChange={setSettleAccount}><SelectTrigger><SelectValue placeholder="Selecione a conta" /></SelectTrigger><SelectContent>{bankAccounts.filter(a => a.active && a.companyId && (section === "receivables" ? receivables.filter(r => selectedRec.includes(r.id)).every(r => r.companyId === a.companyId) : payables.filter(p => selectedPay.includes(p.id)).every(p => p.companyId === a.companyId))).map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}</SelectContent></Select>{bankAccounts.length === 0 && <p className="text-xs text-muted-foreground">Cadastre uma conta em Cadastros › Contas Correntes.</p>}</div><div className="space-y-1.5"><Label>Data da baixa</Label><Input type="date" value={settleDate} onChange={(e) => setSettleDate(e.target.value)} /></div><div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setSettleOpen(false)}>Cancelar</Button><Button onClick={settleSelected} disabled={settling}>{settling ? "Baixando..." : "Baixar"}</Button></div></div></DialogContent></Dialog>
     </ClinicLayout>
   );
 }
