@@ -149,6 +149,7 @@ export type Database = {
           agency: string
           bank_name: string
           clinic_id: string
+          company_id: string | null
           created_at: string
           current_balance: number
           id: string
@@ -164,6 +165,7 @@ export type Database = {
           agency: string
           bank_name: string
           clinic_id: string
+          company_id?: string | null
           created_at?: string
           current_balance?: number
           id?: string
@@ -179,6 +181,7 @@ export type Database = {
           agency?: string
           bank_name?: string
           clinic_id?: string
+          company_id?: string | null
           created_at?: string
           current_balance?: number
           id?: string
@@ -195,10 +198,85 @@ export type Database = {
             referencedRelation: "clinics"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "bank_accounts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cash_movements: {
+        Row: {
+          amount: number
+          bank_account_id: string
+          category: string | null
+          clinic_id: string
+          company_id: string
+          created_at: string
+          description: string
+          id: string
+          movement_date: string
+          notes: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          bank_account_id: string
+          category?: string | null
+          clinic_id: string
+          company_id: string
+          created_at?: string
+          description: string
+          id?: string
+          movement_date?: string
+          notes?: string | null
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          bank_account_id?: string
+          category?: string | null
+          clinic_id?: string
+          company_id?: string
+          created_at?: string
+          description?: string
+          id?: string
+          movement_date?: string
+          notes?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_movements_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_movements_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_movements_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
         ]
       }
       cash_sessions: {
         Row: {
+          bank_account_id: string | null
           clinic_id: string
           closed_at: string | null
           closed_by: string | null
@@ -212,6 +290,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          bank_account_id?: string | null
           clinic_id: string
           closed_at?: string | null
           closed_by?: string | null
@@ -225,6 +304,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          bank_account_id?: string | null
           clinic_id?: string
           closed_at?: string | null
           closed_by?: string | null
@@ -238,6 +318,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "cash_sessions_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "cash_sessions_clinic_id_fkey"
             columns: ["clinic_id"]
@@ -876,6 +963,7 @@ export type Database = {
           active: boolean
           average_duration: number
           clinic_id: string
+          company_id: string | null
           created_at: string
           default_price: number
           id: string
@@ -886,6 +974,7 @@ export type Database = {
           active?: boolean
           average_duration?: number
           clinic_id: string
+          company_id?: string | null
           created_at?: string
           default_price?: number
           id?: string
@@ -896,6 +985,7 @@ export type Database = {
           active?: boolean
           average_duration?: number
           clinic_id?: string
+          company_id?: string | null
           created_at?: string
           default_price?: number
           id?: string
@@ -908,6 +998,13 @@ export type Database = {
             columns: ["clinic_id"]
             isOneToOne: false
             referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "procedures_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
