@@ -8,3 +8,5 @@
 - Installment views live as a "Parcelas" toggle inside Contas a Pagar/Receber; receivable installments are derived from count + monthly due dates, not stored.
 
 - CashControl owns account-scoped ledger and sessions; balances derive from initial balance plus manual movements and linked settlements, never mirrored duplicates or clinic-wide totals.
+
+- Cash movements reference shared creditors and typed financial categories by ID with name snapshots; database validation enforces clinic ownership and income/expense category compatibility.
