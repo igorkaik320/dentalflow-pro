@@ -1,5 +1,9 @@
 # Ajustes solicitados
 
+- [ ] Exibir apenas o cadastro selecionado no menu, sem todas as abas na tela.
+- [ ] Remover empresa duplicada em Contas a Pagar.
+- [ ] Adicionar código, nome e lupa à busca de empresa e validar seleção.
+
 - [x] Comparar layout, menu, cadastros, campos e busca com o projeto projetbase disponibilizado.
 - [x] Aplicar o padrão visual de referência sem alterar dados, permissões e regras financeiras.
 - [x] Validar navegação, cadastro e busca nas telas atualizadas, incluindo persistência e remoção do registro temporário.

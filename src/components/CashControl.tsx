@@ -124,7 +124,7 @@ export function CashControl() {
 
   return <div className="space-y-5">
     <div className="grid gap-4 sm:grid-cols-2 border-b border-border pb-5">
-      <div className="space-y-1.5"><Label>Empresa</Label><Select value={companyId} onValueChange={id => { setCompanyId(id); setAccountId(""); }}><SelectTrigger aria-label="Empresa do caixa"><SelectValue placeholder="Selecione a empresa" /></SelectTrigger><SelectContent>{companies.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select></div>
+      <div className="space-y-1.5"><EntitySearchInput advanced label="Empresa" value={companies.find(c => c.id === companyId)?.name || ""} options={companies.map(c => ({ id: c.id, code: c.id.slice(0, 8).toUpperCase(), label: c.name }))} placeholder="Selecione a empresa" onQueryChange={() => { setCompanyId(""); setAccountId(""); }} onSelect={o => { setCompanyId(o.id); setAccountId(""); }} /></div>
       <div className="space-y-1.5"><Label>Caixa</Label><Select value={accountId} onValueChange={setAccountId} disabled={!companyId}><SelectTrigger aria-label="Selecionar caixa"><SelectValue placeholder="Selecione o caixa" /></SelectTrigger><SelectContent>{available.map(a => <SelectItem key={a.id} value={a.id}>{a.bank_name} · {a.account_number}</SelectItem>)}</SelectContent></Select></div>
     </div>
     {!account ? <p className="py-8 text-center text-sm text-muted-foreground">{companyId && available.length === 0 ? "Nenhum caixa ativo nesta empresa. Cadastre uma conta com o tipo Caixa em Contas Correntes." : "Selecione a empresa e o caixa."}</p> : <>
