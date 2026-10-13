@@ -1,8 +1,8 @@
 # Ajustes solicitados
 
-- [ ] Comparar layout, menu, cadastros, campos e busca com o projeto projetbase disponibilizado.
-- [ ] Aplicar o padrão visual de referência sem alterar dados, permissões e regras financeiras.
-- [ ] Validar navegação, cadastro e busca nas telas atualizadas.
+- [x] Comparar layout, menu, cadastros, campos e busca com o projeto projetbase disponibilizado.
+- [x] Aplicar o padrão visual de referência sem alterar dados, permissões e regras financeiras.
+- [x] Validar navegação, cadastro e busca nas telas atualizadas, incluindo persistência e remoção do registro temporário.
 
 - [x] Compartilhar credores e categorias nos lançamentos de Caixa e validar persistência.
 - [x] Excluir somente contas e empresas criadas nos testes, incluindo dependências de teste.
