@@ -43,6 +43,13 @@
       "when": 1791893996315,
       "tag": "0005_company_accounts_procedures_cash_ledger",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791894262266,
+      "tag": "0006_allow_cash_and_investment_account_types",
+      "breakpoints": true
     }
   ]
 }
