@@ -50,6 +50,13 @@
       "when": 1791894262266,
       "tag": "0006_allow_cash_and_investment_account_types",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791894427893,
+      "tag": "0007_protect_company_account_history",
+      "breakpoints": true
     }
   ]
 }
