@@ -11,9 +11,7 @@ import type { PermissionModule } from "@/lib/permissions";
 import DashboardPage from "./pages/DashboardPage";
 import AuditPage from "./pages/AuditPage";
 import FinancialPage from "./pages/FinancialPage";
-import PayableInstallmentsPage from "./pages/PayableInstallmentsPage";
 import PatrimonyPage from "./pages/PatrimonyPage";
-import SettingsPage from "./pages/SettingsPage";
 import SecurityPage from "./pages/SecurityPage";
 import RegistrationsPage from "./pages/RegistrationsPage";
 import NotFound from "./pages/NotFound";
@@ -58,9 +56,7 @@ const App = () => (
               <Route path="/financeiro/pagar" element={<AccessGuard module="financial"><FinancialPage section="payables" /></AccessGuard>} />
               <Route path="/financeiro/caixa" element={<AccessGuard module="financial"><FinancialPage section="cashflow" /></AccessGuard>} />
               <Route path="/auditoria" element={<AuditPage />} />
-              <Route path="/financeiro/parcelas" element={<AccessGuard module="payable_installments"><PayableInstallmentsPage /></AccessGuard>} />
               <Route path="/patrimonio" element={<AccessGuard module="patrimony"><PatrimonyPage /></AccessGuard>} />
-              <Route path="/configuracoes" element={<AccessGuard module="settings"><SettingsPage /></AccessGuard>} />
               <Route path="/seguranca" element={<AccessGuard module="security"><SecurityPage /></AccessGuard>} />
               <Route path="*" element={<NotFound />} />
             </Routes>

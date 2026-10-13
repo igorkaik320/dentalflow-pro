@@ -86,6 +86,8 @@ export interface Receivable {
   dueDate: string;
   paidDate?: string;
   bankAccountId?: string;
+  companyId?: string;
+  companyName?: string;
 }
 
 export interface Payable {
