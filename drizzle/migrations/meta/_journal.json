@@ -22,6 +22,20 @@
       "when": 1791380959764,
       "tag": "0002_fix_audit_clinic_identity",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791892565740,
+      "tag": "0003_create_companies",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791892655652,
+      "tag": "0004_receivables_category",
+      "breakpoints": true
     }
   ]
 }

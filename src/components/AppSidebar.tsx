@@ -1,4 +1,4 @@
-import { LayoutDashboard, ArrowUpCircle, ArrowDownCircle, Wallet, FileText, Settings, ClipboardList, Lock, Boxes, ShieldCheck, ChevronRight } from "lucide-react";
+import { LayoutDashboard, ArrowUpCircle, ArrowDownCircle, Wallet,  ClipboardList, Lock, Boxes, ShieldCheck, ChevronRight } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useClinic } from "@/contexts/ClinicContext";
@@ -15,12 +15,10 @@ const groups: Array<{ label: string; items: Array<{ title: string; url: string; 
     { title: "Contas a Receber", url: "/financeiro/receber", icon: ArrowUpCircle, module: "financial" },
     { title: "Contas a Pagar", url: "/financeiro/pagar", icon: ArrowDownCircle, module: "financial" },
     { title: "Controle de Caixa", url: "/financeiro/caixa", icon: Wallet, module: "financial" },
-    { title: "Parcelas", url: "/financeiro/parcelas", icon: FileText, module: "payable_installments" },
   ] },
   { label: "Administração", items: [
     { title: "Auditoria", url: "/auditoria", icon: ShieldCheck, module: "security", adminOnly: true },
     { title: "Segurança", url: "/seguranca", icon: Lock, module: "security" },
-    { title: "Configurações", url: "/configuracoes", icon: Settings, module: "settings" },
   ] },
 ];
 const roleLabels = { admin: "Administrador", reception: "Recepção", dentist: "Especialista", finance: "Financeiro" };

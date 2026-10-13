@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.15"
   }
   public: {
     Tables: {
@@ -495,6 +495,56 @@ export type Database = {
         }
         Relationships: []
       }
+      companies: {
+        Row: {
+          active: boolean
+          address: string | null
+          clinic_id: string
+          cnpj: string | null
+          created_at: string
+          email: string | null
+          id: string
+          legal_name: string | null
+          name: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          address?: string | null
+          clinic_id: string
+          cnpj?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          legal_name?: string | null
+          name: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          address?: string | null
+          clinic_id?: string
+          cnpj?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          legal_name?: string | null
+          name?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "companies_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       financial_categories: {
         Row: {
           clinic_id: string
@@ -946,7 +996,10 @@ export type Database = {
         Row: {
           amount: number
           bank_account_id: string | null
+          category: string | null
           clinic_id: string
+          company_id: string | null
+          company_name: string | null
           created_at: string
           due_date: string
           id: string
@@ -965,7 +1018,10 @@ export type Database = {
         Insert: {
           amount?: number
           bank_account_id?: string | null
+          category?: string | null
           clinic_id: string
+          company_id?: string | null
+          company_name?: string | null
           created_at?: string
           due_date: string
           id?: string
@@ -984,7 +1040,10 @@ export type Database = {
         Update: {
           amount?: number
           bank_account_id?: string | null
+          category?: string | null
           clinic_id?: string
+          company_id?: string | null
+          company_name?: string | null
           created_at?: string
           due_date?: string
           id?: string
@@ -1013,6 +1072,13 @@ export type Database = {
             columns: ["clinic_id"]
             isOneToOne: false
             referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receivables_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
           {
