@@ -10,3 +10,6 @@
 - CashControl owns account-scoped ledger and sessions; balances derive from initial balance plus manual movements and linked settlements, never mirrored duplicates or clinic-wide totals.
 
 - Cash movements reference shared creditors and typed financial categories by ID with name snapshots; database validation enforces clinic ownership and income/expense category compatibility.
+
+- Presentation follows the reference through shared layout, form primitives and EntitySearchInput; retain local routes, permissions and database workflows instead of importing reference business logic.
+- Registration menu links use the existing guarded registrations route with a tab query parameter, so navigation and the selected registration tab remain synchronized.
