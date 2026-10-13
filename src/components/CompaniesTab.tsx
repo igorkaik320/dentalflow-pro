@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { EntitySearchInput } from "@/components/EntitySearchInput";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,9 @@ const empty: Form = { name: "", legal_name: "", cnpj: "", phone: "", email: "", 
 export function CompaniesTab() {
   const { clinic } = useClinic();
   const [rows, setRows] = useState<Company[]>([]);
+  const [search, setSearch] = useState("");
+  const normalize = (text: string) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const filteredRows = rows.filter(c => normalize(`${c.id.slice(0, 8)} ${c.name} ${c.legal_name || ""} ${c.cnpj || ""}`).includes(normalize(search)) || (search.replace(/\D/g, "").length >= 3 && (c.cnpj || "").replace(/\D/g, "").includes(search.replace(/\D/g, ""))));
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Company | null>(null);
   const [form, setForm] = useState<Form>(empty);
@@ -61,9 +65,10 @@ export function CompaniesTab() {
   };
 
   return <>
+    <div className="mb-4 max-w-xl"><EntitySearchInput advanced label="Empresa" value={search} options={filteredRows.map(c => ({ id: c.id, code: c.id.slice(0, 8).toUpperCase(), label: c.name, legalName: c.legal_name || "", document: c.cnpj || "" }))} placeholder="Nome, razão social ou CNPJ" onQueryChange={setSearch} onSelect={o => setSearch(o.label)} /></div>
     <Card>
       <div className="flex items-center justify-between p-4 border-b border-border">
-        <span className="text-sm text-muted-foreground">{rows.length} empresas cadastradas</span>
+        <span className="text-sm text-muted-foreground">{filteredRows.length} empresas cadastradas</span>
         <Button size="sm" onClick={() => openForm()}><Plus className="h-4 w-4 mr-1" />Nova Empresa</Button>
       </div>
       <div className="overflow-x-auto"><table className="w-full">
@@ -75,14 +80,14 @@ export function CompaniesTab() {
           <th className="text-right text-xs font-medium text-muted-foreground p-3">Ações</th>
         </tr></thead>
         <tbody>
-          {rows.map(c => <tr key={c.id} className="border-b border-border/50 hover:bg-muted/30">
+          {filteredRows.map(c => <tr key={c.id} className="border-b border-border/50 hover:bg-muted/30">
             <td className="p-3"><div className="flex items-center gap-2"><Building2 className="h-4 w-4 text-primary" /><div><p className="text-sm font-medium text-foreground">{c.name}</p>{c.legal_name && <p className="text-xs text-muted-foreground">{c.legal_name}</p>}</div></div></td>
             <td className="p-3 text-sm text-muted-foreground hidden md:table-cell">{c.cnpj || "-"}</td>
             <td className="p-3 text-sm text-muted-foreground hidden md:table-cell">{[c.phone, c.email].filter(Boolean).join(" · ") || "-"}</td>
             <td className="p-3"><Badge variant={c.active ? "default" : "secondary"}>{c.active ? "Ativa" : "Inativa"}</Badge></td>
             <td className="p-3 text-right"><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openForm(c)}><Edit2 className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteId(c.id)}><Trash2 className="h-4 w-4" /></Button></td>
           </tr>)}
-          {rows.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-sm text-muted-foreground">Nenhuma empresa cadastrada.</td></tr>}
+          {filteredRows.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-sm text-muted-foreground">Nenhuma empresa encontrada.</td></tr>}
         </tbody>
       </table></div>
     </Card>

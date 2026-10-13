@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { EntitySearchInput } from "@/components/EntitySearchInput";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -97,7 +98,7 @@ export function BankAccountsTab() {
     <Dialog open={open} onOpenChange={setOpen}><DialogContent className="max-w-lg">
       <DialogHeader><DialogTitle>{editing ? "Editar Conta Corrente" : "Nova Conta Corrente"}</DialogTitle></DialogHeader>
       <div className="grid grid-cols-2 gap-4">
-        <div className="col-span-2 space-y-1.5"><Label>Empresa *</Label><Select value={form.company_id || ""} onValueChange={company_id => setForm({ ...form, company_id })}><SelectTrigger aria-label="Empresa da conta"><SelectValue placeholder="Selecione a empresa" /></SelectTrigger><SelectContent>{companies.filter(c => c.active || c.id === form.company_id).map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select></div>
+        <div className="col-span-2 space-y-1.5"><EntitySearchInput advanced label="Empresa *" value={companies.find(c => c.id === form.company_id)?.name || ""} options={companies.filter(c => c.active || c.id === form.company_id).map(c => ({ id: c.id, code: c.id.slice(0, 8).toUpperCase(), label: c.name }))} placeholder="Selecione a empresa" onQueryChange={() => setForm({ ...form, company_id: null })} onSelect={o => setForm({ ...form, company_id: o.id })} /></div>
         <div className="col-span-2 space-y-1.5"><Label htmlFor="account-bank">Banco *</Label><Input id="account-bank" value={form.bank_name} onChange={e => setForm({ ...form, bank_name: e.target.value })} placeholder="Ex: Itaú" /></div>
         <div className="space-y-1.5"><Label>Agência</Label><Input value={form.agency} onChange={e => setForm({ ...form, agency: e.target.value })} /></div>
         <div className="space-y-1.5"><Label htmlFor="account-number">Conta *</Label><Input id="account-number" value={form.account_number} onChange={e => setForm({ ...form, account_number: e.target.value })} /></div>
