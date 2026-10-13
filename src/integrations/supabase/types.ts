@@ -212,6 +212,7 @@ export type Database = {
           amount: number
           bank_account_id: string
           category: string | null
+          category_id: string | null
           clinic_id: string
           company_id: string
           created_at: string
@@ -219,6 +220,8 @@ export type Database = {
           id: string
           movement_date: string
           notes: string | null
+          supplier_id: string | null
+          supplier_name: string | null
           type: string
           updated_at: string
         }
@@ -226,6 +229,7 @@ export type Database = {
           amount: number
           bank_account_id: string
           category?: string | null
+          category_id?: string | null
           clinic_id: string
           company_id: string
           created_at?: string
@@ -233,6 +237,8 @@ export type Database = {
           id?: string
           movement_date?: string
           notes?: string | null
+          supplier_id?: string | null
+          supplier_name?: string | null
           type: string
           updated_at?: string
         }
@@ -240,6 +246,7 @@ export type Database = {
           amount?: number
           bank_account_id?: string
           category?: string | null
+          category_id?: string | null
           clinic_id?: string
           company_id?: string
           created_at?: string
@@ -247,6 +254,8 @@ export type Database = {
           id?: string
           movement_date?: string
           notes?: string | null
+          supplier_id?: string | null
+          supplier_name?: string | null
           type?: string
           updated_at?: string
         }
@@ -256,6 +265,13 @@ export type Database = {
             columns: ["bank_account_id"]
             isOneToOne: false
             referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_movements_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "financial_categories"
             referencedColumns: ["id"]
           },
           {
@@ -270,6 +286,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_movements_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
         ]

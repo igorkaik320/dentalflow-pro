@@ -57,6 +57,13 @@
       "when": 1791894427893,
       "tag": "0007_protect_company_account_history",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791894991319,
+      "tag": "0008_cash_shared_creditors_categories",
+      "breakpoints": true
     }
   ]
 }
