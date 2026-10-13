@@ -42,7 +42,7 @@ export function CashControl() {
   useEffect(() => {
     if (!clinic.id) return;
     void Promise.all([
-      db.from("companies").select("id,name").eq("clinic_id", clinic.id).order("name"),
+      db.from("companies").select("id,name").eq("clinic_id", clinic.id).eq("active", true).order("name"),
       db.from("bank_accounts").select("*").eq("clinic_id", clinic.id).eq("account_type", "caixa").order("bank_name"),
     ]).then(([c, a]) => {
       if (c.error || a.error) { setError(true); toast.error("Não foi possível carregar os caixas."); return; }
