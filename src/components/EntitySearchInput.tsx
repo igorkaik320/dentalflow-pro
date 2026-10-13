@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { useEffect, useId, useMemo, useState } from "react";
+import { Search, X, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 export type EntitySearchOption = {
   id: string;
@@ -45,6 +45,8 @@ export function EntitySearchInput({
   onQueryChange,
   onSelect,
 }: EntitySearchInputProps) {
+  const inputId = useId();
+  const [codeQuery, setCodeQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value || "");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -56,7 +58,8 @@ export function EntitySearchInput({
 
   useEffect(() => {
     setQuery(value || "");
-  }, [value]);
+    setCodeQuery(options.find(o => o.label === value)?.code || "");
+  }, [value, options]);
 
   const filtered = useMemo(() => {
     const term = normalize(query);
@@ -80,7 +83,7 @@ export function EntitySearchInput({
   };
 
   const openModal = () => {
-    setMCode(""); setMName(query); setMLegal(""); setMDoc("");
+    setMCode(codeQuery); setMName(query); setMLegal(""); setMDoc("");
     setOpen(false);
     setDialogOpen(true);
     const n = normalize(query);
@@ -89,65 +92,56 @@ export function EntitySearchInput({
 
   const pick = (option: EntitySearchOption) => {
     setQuery(option.label);
+    setCodeQuery(option.code || "");
     setOpen(false);
     setDialogOpen(false);
     onSelect(option);
   };
 
   return (
-    <div className="space-y-2">
-      <Label>{label}</Label>
-      <div className="relative">
-        {advanced ? (
-          <button type="button" aria-label={`Consultar ${label}`} onClick={openModal} className="absolute left-2 inset-y-0 flex items-center text-muted-foreground hover:text-primary">
-            <Search className="h-4 w-4" />
-          </button>
-        ) : (
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        )}
-        <Input
-          className="pl-9"
-          value={query}
-          placeholder={placeholder}
-          onChange={(event) => {
-            const nextValue = event.target.value;
-            setQuery(nextValue);
-            onQueryChange?.(nextValue);
-            setOpen(true);
-          }}
-          onFocus={() => setOpen(true)}
-          onBlur={() => setTimeout(() => setOpen(false), 200)}
-        />
-        {open && filtered.length > 0 ? (
-          <div className="absolute z-50 mt-1 max-h-52 w-full overflow-auto rounded-md border border-border bg-popover shadow-lg">
-            {filtered.slice(0, 100).map((option) => (
-              <button key={option.id} type="button" className="w-full px-3 py-2 text-left text-sm hover:bg-accent" onMouseDown={() => pick(option)}>
-                <div className="font-medium text-foreground">{option.code ? `${option.code} - ` : ""}{option.label}</div>
-                {option.description ? <div className="text-xs text-muted-foreground">{option.description}</div> : null}
-              </button>
-            ))}
-          </div>
-        ) : null}
+    <div className="space-y-1.5 min-w-0">
+      <Label htmlFor={inputId}>{label}</Label>
+      <div className="flex min-w-0 gap-2">
+        {advanced && options.some(o => o.code) && <Input aria-label={`Código de ${label}`} placeholder="Cód" className="w-16 shrink-0" value={codeQuery} onChange={e => {
+          const next = e.target.value;
+          setCodeQuery(next);
+          const match = options.find(o => o.code === next);
+          if (match) pick(match);
+          else { setQuery(""); onQueryChange?.(next); }
+        }} />}
+        <div className="relative min-w-0 flex-1">
+          {!advanced && <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />}
+          <Input id={inputId} className={advanced ? "" : "pl-9"} value={query} placeholder={placeholder}
+            onChange={event => { const nextValue = event.target.value; setQuery(nextValue); setCodeQuery(""); onQueryChange?.(nextValue); setOpen(true); }}
+            onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 200)}
+            onKeyDown={e => { if (e.key === "Escape") setOpen(false); if (e.key === "Enter" && open && filtered.length === 1) { e.preventDefault(); pick(filtered[0]); } }} />
+          {open && filtered.length > 0 && <div className="absolute z-50 mt-1 max-h-52 w-full overflow-auto rounded-md border border-border bg-popover shadow-lg">
+            {filtered.slice(0, 100).map(option => <Button key={option.id} type="button" variant="ghost" className="h-auto w-full justify-start rounded-none px-3 py-2 text-left" onMouseDown={e => e.preventDefault()} onClick={() => pick(option)}>
+              <div className="min-w-0 whitespace-normal"><div className="font-medium text-foreground">{option.code ? `${option.code} - ` : ""}{option.label}</div>{option.description && <div className="text-xs text-muted-foreground">{option.description}</div>}</div>
+            </Button>)}
+          </div>}
+        </div>
+        {advanced && <Button type="button" variant="outline" size="icon" className="shrink-0" aria-label={`Consultar ${label}`} title={`Consultar ${label}`} onClick={openModal}><Search className="h-4 w-4" /></Button>}
       </div>
 
       {advanced ? (
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="max-w-3xl">
+          <DialogContent className="max-w-[90vw]">
             <DialogHeader><DialogTitle>{modalTitle || `Consultar ${label}`}</DialogTitle></DialogHeader>
             <form
-              className="grid grid-cols-1 gap-3 md:grid-cols-[100px_1fr_1fr_170px_auto] md:items-end"
+              className="entity-search-filters grid grid-cols-1 gap-3 rounded-lg p-4 sm:grid-cols-2 lg:grid-cols-[80px_1fr_1fr_190px]"
               onSubmit={(e) => { e.preventDefault(); runSearch(); }}
             >
-              <div><Label>Código</Label><Input value={mCode} onChange={(e) => setMCode(e.target.value)} /></div>
-              <div><Label>Nome</Label><Input value={mName} onChange={(e) => setMName(e.target.value)} /></div>
-              <div><Label>Razão social</Label><Input value={mLegal} onChange={(e) => setMLegal(e.target.value)} /></div>
-              <div><Label>CPF/CNPJ</Label><Input value={mDoc} onChange={(e) => setMDoc(e.target.value)} /></div>
-              <Button type="submit"><Search className="mr-1 h-4 w-4" />Consultar</Button>
+              <div><Label htmlFor={`${inputId}-code`}>Código</Label><Input id={`${inputId}-code`} value={mCode} onChange={(e) => setMCode(e.target.value)} /></div>
+              <div><Label htmlFor={`${inputId}-name`}>Nome</Label><Input id={`${inputId}-name`} value={mName} onChange={(e) => setMName(e.target.value)} /></div>
+              <div><Label htmlFor={`${inputId}-legal`}>Razão social</Label><Input id={`${inputId}-legal`} value={mLegal} onChange={(e) => setMLegal(e.target.value)} /></div>
+              <div><Label htmlFor={`${inputId}-doc`}>CPF/CNPJ</Label><Input id={`${inputId}-doc`} value={mDoc} onChange={(e) => setMDoc(e.target.value)} /></div>
+              <div className="flex justify-end gap-2 sm:col-span-2 lg:col-span-4"><Button type="button" variant="outline" onClick={() => { setMCode(""); setMName(""); setMLegal(""); setMDoc(""); setResults(options); }}><X className="h-4 w-4" />Limpar</Button><Button type="submit"><Search className="h-4 w-4" />Consultar</Button></div>
             </form>
             <div className="max-h-[50vh] overflow-auto rounded-md border border-border">
               <table className="w-full text-sm">
                 <thead className="sticky top-0 bg-muted text-xs text-muted-foreground">
-                  <tr><th className="p-2 text-left">Código</th><th className="p-2 text-left">Nome</th><th className="p-2 text-left">Razão social</th><th className="p-2 text-left">CPF/CNPJ</th></tr>
+                  <tr><th className="p-2 text-left">Código</th><th className="p-2 text-left">Nome</th><th className="p-2 text-left">Razão social</th><th className="p-2 text-left">CPF/CNPJ</th><th className="w-12"><span className="sr-only">Selecionar</span></th></tr>
                 </thead>
                 <tbody>
                   {results.map((o) => (
@@ -155,14 +149,14 @@ export function EntitySearchInput({
                       <td className="p-2">{o.code || "-"}</td>
                       <td className="p-2 font-medium">{o.label}</td>
                       <td className="p-2 text-muted-foreground">{o.legalName || "-"}</td>
-                      <td className="p-2 text-muted-foreground">{o.document || "-"}</td>
+                      <td className="p-2 text-muted-foreground">{o.document || "-"}</td><td className="p-2"><Button type="button" variant="ghost" size="icon" aria-label={`Selecionar ${o.label}`} onClick={e => { e.stopPropagation(); pick(o); }}><Check className="h-4 w-4 text-primary" /></Button></td>
                     </tr>
                   ))}
-                  {results.length === 0 ? <tr><td colSpan={4} className="p-6 text-center text-muted-foreground">Nenhum registro encontrado.</td></tr> : null}
+                  {results.length === 0 ? <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">Nenhum registro encontrado.</td></tr> : null}
                 </tbody>
               </table>
             </div>
-            <p className="text-xs text-muted-foreground">{results.length} registro(s). Clique em uma linha para selecionar.</p>
+            <DialogFooter className="items-center gap-2"><p className="mr-auto text-xs text-muted-foreground">{results.length} registro(s)</p><Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button></DialogFooter>
           </DialogContent>
         </Dialog>
       ) : null}
