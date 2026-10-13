@@ -1,6 +1,6 @@
 # Ajustes solicitados
 
-- [ ] Separar Financeiro em Contas a Receber, Contas a Pagar e Controle de Caixa.
-- [ ] Concluir página de Auditoria e validar registros e acesso administrativo.
-- [ ] Retirar Agenda e logo do menu; melhorar menu e cabeçalho.
-- [ ] Validar Credores, flag Colaborador e ordem Receita/Despesa.
+- [ ] Exigir empresa em contas correntes e procedimentos, preservando registros antigos.
+- [ ] Filtrar procedimentos e contas de baixa pela empresa do lançamento.
+- [ ] Controle de Caixa independente por empresa e conta do tipo Caixa, com entradas/saídas auditadas.
+- [ ] Validar cadastro e movimentação de caixa com persistência e isolamento.
