@@ -26,12 +26,12 @@ export function ClinicLayout({ children, title, subtitle }: ClinicLayoutProps) {
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="min-h-20 flex items-center justify-between border-b border-border bg-card px-4 sm:px-6 py-3 gap-3 shrink-0">
+          <header className="sticky top-0 z-30 h-14 flex items-center justify-between border-b border-border bg-card/95 px-4 sm:px-6 gap-3 shrink-0 backdrop-blur">
             <div className="flex min-w-0 items-center gap-3">
-              <SidebarTrigger className="text-muted-foreground" />
+              <SidebarTrigger className="text-muted-foreground md:hidden" />
               <div className="min-w-0">
-                <h1 className="text-lg font-semibold text-foreground leading-tight">{title}</h1>
-                {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
+                <h1 className="text-[15px] font-bold text-foreground leading-tight">{title}</h1>
+                {subtitle && <p className="text-[11px] text-muted-foreground mt-0.5">{subtitle}</p>}
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -45,7 +45,7 @@ export function ClinicLayout({ children, title, subtitle }: ClinicLayoutProps) {
               </Button>
             </div>
           </header>
-          <main className="flex-1 p-4 sm:p-6 overflow-auto">
+          <main className="clinic-workspace flex-1 min-w-0 p-4 sm:p-6 overflow-auto">
             {children}
           </main>
         </div>

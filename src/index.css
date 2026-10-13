@@ -4,8 +4,8 @@
 
 @layer base {
   :root {
-    --background: 210 20% 98%;
-    --foreground: 215 25% 15%;
+    --background: 220 20% 98%;
+    --foreground: 222 47% 11%;
 
     --card: 0 0% 100%;
     --card-foreground: 215 25% 15%;
@@ -13,17 +13,17 @@
     --popover: 0 0% 100%;
     --popover-foreground: 215 25% 15%;
 
-    --primary: 213 94% 48%;
+    --primary: 221 83% 53%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 18% 95%;
+    --secondary: 210 40% 96%;
     --secondary-foreground: 215 25% 27%;
 
-    --muted: 210 16% 93%;
-    --muted-foreground: 215 14% 50%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
 
-    --accent: 199 89% 48%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
@@ -37,19 +37,20 @@
     --info: 199 89% 48%;
     --info-foreground: 0 0% 100%;
 
-    --border: 214 20% 90%;
-    --input: 214 20% 90%;
-    --ring: 213 94% 48%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 221 83% 53%;
 
     --radius: 0.5rem;
+    --overlay: 222 47% 11%;
 
-    --sidebar-background: 215 28% 17%;
-    --sidebar-foreground: 210 20% 85%;
-    --sidebar-primary: 213 94% 58%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 25% 23%;
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 210 40% 98%;
+    --sidebar-primary-foreground: 222 47% 11%;
+    --sidebar-accent: 217 33% 17%;
     --sidebar-accent-foreground: 210 20% 95%;
-    --sidebar-border: 215 20% 25%;
+    --sidebar-border: 217 33% 17%;
     --sidebar-ring: 213 94% 58%;
     --sidebar-muted: 215 15% 65%;
 
@@ -100,6 +101,8 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-family: 'Inter', system-ui, sans-serif;
+    letter-spacing: 0;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
 }
 
@@ -110,5 +113,19 @@
 
   .stat-card {
     @apply bg-card rounded-xl border border-border/50 p-5 shadow-sm transition-shadow hover:shadow-md;
+  }
+}
+
+@layer components {
+  .clinic-workspace { font-size: 13px; }
+  .clinic-workspace table th { font-weight: 600; color: hsl(var(--foreground)); }
+  .clinic-workspace table td { font-size: 13px; }
+  .clinic-workspace table th, .clinic-workspace table td { padding: 0.75rem 1rem; }
+  .clinic-workspace [role="tablist"] { height: auto; min-height: 2.5rem; gap: 0.25rem; }
+  .entity-search-filters { background: hsl(var(--muted) / 0.7); }
+  [role="dialog"] label { display: inline-block; margin-bottom: 0.25rem; }
+  @media (max-width: 639px) {
+    [role="dialog"] .grid-cols-2:not(.installment-grid) { grid-template-columns: minmax(0, 1fr); }
+    [role="dialog"] .col-span-2 { grid-column: span 1 / span 1; }
   }
 }
