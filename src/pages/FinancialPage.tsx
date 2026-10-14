@@ -15,7 +15,10 @@ import { db } from "@/lib/clinicCloud";
 import { formatCurrency, parseCurrencyInput, onlyDigits } from "@/lib/utils";
 import type { FinancialCategory, Payable, PayableInstallment, Professional, Receivable, Supplier } from "@/data/mockData";
 import { toast } from "sonner";
-import { DollarSign, ArrowUpCircle, ArrowDownCircle, Plus, Edit2, Trash2, CalendarDays, CheckCircle2, Search } from "lucide-react";
+import { DollarSign, Plus, Edit2, Trash2, CalendarDays, CheckCircle2, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FinanceFilterPanel, emptyFinanceFilters, type FinanceFilters } from "@/components/FinanceFilterPanel";
+import { TablePagination, usePagination } from "@/components/TablePagination";
 
 type CompanyRow = { id: string; name: string; legalName: string; cnpj: string; active: boolean };
 type BankAccountRow = { id: string; name: string; initialDate: string; initialBalance: number; active: boolean; companyId?: string; accountType: string };
@@ -27,6 +30,17 @@ type FinancialStatus = "open" | "paid" | "overdue";
 type InstallmentForm = Omit<PayableInstallment, "payableId">;
 type PayableWithInstallments = Payable & { supplierId?: string; installments: PayableInstallment[] };
 type PayableForm = Omit<Payable, "id" | "installments"> & { supplierId?: string; installmentsCount: number; installments: InstallmentForm[] };
+
+type SortState = { key: string; dir: "asc" | "desc" };
+
+function sortRows<T>(rows: T[], sort: SortState, get: (row: T, key: string) => string | number) {
+  const dir = sort.dir === "asc" ? 1 : -1;
+  return [...rows].sort((a, b) => {
+    const va = get(a, sort.key), vb = get(b, sort.key);
+    if (typeof va === "number" && typeof vb === "number") return (va - vb) * dir;
+    return String(va).localeCompare(String(vb), "pt-BR") * dir;
+  });
+}
 
 const today = () => new Date().toISOString().split("T")[0];
 
@@ -241,12 +255,12 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
   const [categories, setCategories] = useState<FinancialCategory[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
-  const [receivableFilter, setReceivableFilter] = usePersistentState(storageKeys.receivableFilter, "");
-  const [receivableStart, setReceivableStart] = usePersistentState(storageKeys.receivableStart, "");
-  const [receivableEnd, setReceivableEnd] = usePersistentState(storageKeys.receivableEnd, "");
-  const [payableFilter, setPayableFilter] = usePersistentState(storageKeys.payableFilter, "");
-  const [payableStart, setPayableStart] = usePersistentState(storageKeys.payableStart, "");
-  const [payableEnd, setPayableEnd] = usePersistentState(storageKeys.payableEnd, "");
+  const [recDraft, setRecDraft] = useState<FinanceFilters>(emptyFinanceFilters);
+  const [recApplied, setRecApplied] = useState<FinanceFilters>(emptyFinanceFilters);
+  const [payDraft, setPayDraft] = useState<FinanceFilters>(emptyFinanceFilters);
+  const [payApplied, setPayApplied] = useState<FinanceFilters>(emptyFinanceFilters);
+  const [recSort, setRecSort] = useState<SortState>({ key: "dueDate", dir: "desc" });
+  const [paySort, setPaySort] = useState<SortState>({ key: "dueDate", dir: "desc" });
 
   const [showRecForm, setShowRecForm] = usePersistentState(storageKeys.showReceivableForm, false);
   const [editingRec, setEditingRec] = useState<Receivable | null>(null);
@@ -274,8 +288,9 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
       setCompanies((data || []).map((c: any) => ({ id: c.id, name: c.name, legalName: c.legal_name || "", cnpj: c.cnpj || "", active: c.active })));
     });
   }, [clinic.id]);
-  const companyName = (id?: string, fallback?: string) => companies.find((c) => c.id === id)?.name || fallback || "-";
-  const companyOptions = companies.map(c => ({ id: c.id, code: c.id.slice(0, 8).toUpperCase(), label: c.name, legalName: c.legalName, document: c.cnpj }));
+  const companyById = useMemo(() => new Map(companies.map((c) => [c.id, c])), [companies]);
+  const companyName = (id?: string, fallback?: string) => (id && companyById.get(id)?.name) || fallback || "-";
+  const companyOptions = useMemo(() => companies.map(c => ({ id: c.id, code: c.id.slice(0, 8).toUpperCase(), label: c.name, legalName: c.legalName, document: c.cnpj })), [companies]);
 
   useEffect(() => {
     if (!clinic.id) {
@@ -288,6 +303,7 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
   const loadData = async () => {
     if (!clinic.id) return;
     setLoading(true);
+    const bankPromise = db.from("bank_accounts").select("*").eq("clinic_id", clinic.id).order("bank_name");
     const [recRes, payRes, profRes, catRes, supplierRes, clientRes, procedureRes] = await Promise.all([
       db.from("receivables").select("*").eq("clinic_id", clinic.id).order("due_date", { ascending: false }),
       db.from("payables").select("*, payable_installments(*)").eq("clinic_id", clinic.id).order("due_date", { ascending: false }),
@@ -297,7 +313,7 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
       db.from("patients").select("id, name, cpf").eq("clinic_id", clinic.id).order("name"),
       db.from("procedures").select("id, name, default_price, average_duration, company_id").eq("clinic_id", clinic.id).order("name"),
     ]);
-    const bankRes = await db.from("bank_accounts").select("*").eq("clinic_id", clinic.id).order("bank_name");
+    const bankRes = await bankPromise;
     setBankAccounts((bankRes.data || []).map((b: any) => ({ id: b.id, companyId: b.company_id || undefined, accountType: b.account_type, name: `${b.bank_name} · Ag ${b.agency} · CC ${b.account_number}`, initialDate: b.initial_date, initialBalance: Number(b.initial_balance || 0), active: Boolean(b.active) })));
     setLoading(false);
     const error = recRes.error || payRes.error || profRes.error || catRes.error || supplierRes.error || clientRes.error || procedureRes.error;
@@ -367,30 +383,32 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
   const clientById = useMemo(() => new Map(clients.map((client) => [client.id, client])), [clients]);
   const supplierById = useMemo(() => new Map(suppliers.map((supplier) => [supplier.id, supplier])), [suppliers]);
 
-  const filteredReceivables = useMemo(() => {
-    const term = normalizeText(receivableFilter);
-    const digits = onlyDigits(receivableFilter);
-    return receivables.filter((item) => {
-      const client = item.patientId ? clientById.get(item.patientId) : undefined;
-      const text = normalizeText(`${item.patientName} ${item.procedure} ${item.professionalName} ${item.paymentMethod} ${client?.cpf || ""}`);
-      const numeric = onlyDigits(client?.cpf || "");
-      const matches = !term || text.includes(term) || (!!digits && numeric.includes(digits));
-      return matches && isWithinPeriod(item.dueDate, receivableStart, receivableEnd);
-    });
-  }, [receivables, receivableFilter, receivableStart, receivableEnd, clientById]);
+  const matchesBase = (f: FinanceFilters, row: { companyId?: string; companyName: string; entityId?: string; entityName: string; entityText: string; category?: string }) => {
+    if (f.companyId) { if (row.companyId !== f.companyId) return false; }
+    else if (f.companyName.trim() && !normalizeText(row.companyName).includes(normalizeText(f.companyName))) return false;
+    if (f.entityId) { if (row.entityId !== f.entityId && normalizeText(row.entityName) !== normalizeText(f.entityName)) return false; }
+    else if (f.entityName.trim()) {
+      const t = normalizeText(f.entityName); const d = onlyDigits(f.entityName);
+      if (!normalizeText(row.entityText).includes(t) && !(d.length >= 3 && onlyDigits(row.entityText).includes(d))) return false;
+    }
+    if (f.category.trim() && !normalizeText(row.category || "").includes(normalizeText(f.category))) return false;
+    return true;
+  };
+  const matchesStatusDate = (f: FinanceFilters, status: string, date?: string) => (f.statuses.length === 0 || f.statuses.includes(status)) && (!f.start && !f.end ? true : isWithinPeriod(date, f.start, f.end));
 
-  const filteredPayables = useMemo(() => {
-    const term = normalizeText(payableFilter);
-    const digits = onlyDigits(payableFilter);
-    return payables.filter((item) => {
-      const supplier = item.supplierId ? supplierById.get(item.supplierId) : undefined;
-      const text = normalizeText(`${item.supplier} ${item.description} ${item.category} ${item.companyName || ""} ${supplier?.legalName || ""} ${supplier?.document || ""} ${supplier?.cnpj || ""}`);
-      const numeric = onlyDigits(`${supplier?.document || ""} ${supplier?.cnpj || ""}`);
-      const matches = !term || text.includes(term) || (!!digits && numeric.includes(digits));
-      return matches && isWithinPeriod(item.dueDate, payableStart, payableEnd);
-    });
-  }, [payables, payableFilter, payableStart, payableEnd, supplierById]);
-  const receivableInstallments = useMemo(() => filteredReceivables.flatMap((r) => {
+  const recBase = useMemo(() => receivables.filter((r) => {
+    const client = r.patientId ? clientById.get(r.patientId) : undefined;
+    return matchesBase(recApplied, { companyId: r.companyId, companyName: companyName(r.companyId, r.companyName), entityId: r.patientId, entityName: r.patientName, entityText: `${r.patientName} ${client?.cpf || ""}`, category: r.category });
+  }), [receivables, recApplied, clientById, companyById]);
+  const filteredReceivables = useMemo(() => sortRows(recBase.filter(r => matchesStatusDate(recApplied, r.status, r.dueDate)), recSort, (r, k) => k === "amount" ? r.amount : k === "client" ? r.patientName.toLowerCase() : k === "company" ? companyName(r.companyId, r.companyName).toLowerCase() : k === "procedure" ? r.procedure.toLowerCase() : k === "status" ? r.status : r.dueDate || ""), [recBase, recApplied, recSort]);
+
+  const payBase = useMemo(() => payables.filter((p) => {
+    const sup = p.supplierId ? supplierById.get(p.supplierId) : undefined;
+    return matchesBase(payApplied, { companyId: p.companyId, companyName: companyName(p.companyId, p.companyName), entityId: p.supplierId, entityName: p.supplier, entityText: `${p.supplier} ${sup?.legalName || ""} ${sup?.document || ""} ${sup?.cnpj || ""}`, category: p.category });
+  }), [payables, payApplied, supplierById, companyById]);
+  const filteredPayables = useMemo(() => sortRows(payBase.filter(p => matchesStatusDate(payApplied, p.status, p.dueDate)), paySort, (p, k) => k === "amount" ? p.amount : k === "supplier" ? p.supplier.toLowerCase() : k === "company" ? companyName(p.companyId, p.companyName).toLowerCase() : k === "category" ? (p.category || "").toLowerCase() : k === "status" ? p.status : p.dueDate || ""), [payBase, payApplied, paySort]);
+
+  const receivableInstallments = useMemo(() => recBase.flatMap((r) => {
     const count = Math.max(1, r.installments || 1);
     const base = Math.floor((r.amount / count) * 100) / 100;
     return Array.from({ length: count }, (_, i) => ({
@@ -398,8 +416,19 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
       amount: i === count - 1 ? Math.round((r.amount - base * (count - 1)) * 100) / 100 : base,
       dueDate: addMonths(r.dueDate, i),
     }));
-  }), [filteredReceivables]);
-  const payableInstallmentRows = useMemo(() => filteredPayables.flatMap((p) => (p.installments.length ? p.installments : []).map((inst) => ({ key: inst.id, pay: p, inst, count: p.installments.length }))), [filteredPayables]);
+  }).filter(row => matchesStatusDate(recApplied, row.rec.status, row.dueDate)).sort((a, b) => a.dueDate.localeCompare(b.dueDate)), [recBase, recApplied]);
+  const payableInstallmentRows = useMemo(() => payBase.flatMap((p) => p.installments.map((inst) => ({ key: inst.id, pay: p, inst, count: p.installments.length })))
+    .filter(row => matchesStatusDate(payApplied, row.inst.status, row.inst.dueDate)).sort((a, b) => a.inst.dueDate.localeCompare(b.inst.dueDate)), [payBase, payApplied]);
+
+  const recPage = usePagination(filteredReceivables, 30, recApplied);
+  const payPage = usePagination(filteredPayables, 30, payApplied);
+  const recInstPage = usePagination(receivableInstallments, 30, recApplied);
+  const payInstPage = usePagination(payableInstallmentRows, 30, payApplied);
+
+  const recEntryTotals = useMemo(() => { const total = filteredReceivables.reduce((s, r) => s + r.amount, 0); const paid = filteredReceivables.filter(r => r.status === "paid").reduce((s, r) => s + r.amount, 0); return { total, paid, open: total - paid }; }, [filteredReceivables]);
+  const recInstTotals = useMemo(() => { const total = receivableInstallments.reduce((s, r) => s + r.amount, 0); const paid = receivableInstallments.filter(r => r.rec.status === "paid").reduce((s, r) => s + r.amount, 0); return { total, paid, open: total - paid }; }, [receivableInstallments]);
+  const payEntryTotals = useMemo(() => { const total = filteredPayables.reduce((s, p) => s + p.amount, 0); const paid = filteredPayables.reduce((s, p) => s + (p.installments.length ? p.installments.filter(i => i.status === "paid").reduce((a, i) => a + (i.paidAmount ?? i.amount), 0) : p.status === "paid" ? p.amount : 0), 0); return { total, paid, open: Math.max(0, total - paid) }; }, [filteredPayables]);
+  const payInstTotals = useMemo(() => { const total = payableInstallmentRows.reduce((s, r) => s + r.inst.amount, 0); const paid = payableInstallmentRows.filter(r => r.inst.status === "paid").reduce((s, r) => s + (r.inst.paidAmount ?? r.inst.amount), 0); return { total, paid, open: Math.max(0, total - paid) }; }, [payableInstallmentRows]);
 
   const toggle = (list: string[], set: (v: string[]) => void, id: string) => set(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
 
