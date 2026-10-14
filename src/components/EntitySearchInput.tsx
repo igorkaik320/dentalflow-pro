@@ -102,7 +102,7 @@ export function EntitySearchInput({
     <div className="space-y-1.5 min-w-0">
       <Label htmlFor={inputId}>{label}</Label>
       <div className="flex min-w-0 gap-2">
-        {advanced && options.some(o => o.code) && <Input aria-label={`Código de ${label}`} placeholder="Cód" className="w-16 shrink-0" value={codeQuery} onChange={e => {
+        {advanced && options.some(o => o.code) && <Input aria-label={`Código de ${label}`} placeholder="Cód" className="w-24 shrink-0" value={codeQuery} onChange={e => {
           const next = e.target.value;
           setCodeQuery(next);
           const match = options.find(o => o.code === next);
