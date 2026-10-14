@@ -74,9 +74,9 @@ const storageKeys = {
 };
 
 const statusBadge: Record<string, string> = {
-  open: "bg-primary/10 text-primary",
-  paid: "bg-success/10 text-success",
-  overdue: "bg-destructive/10 text-destructive",
+  open: "bg-primary/15 text-primary",
+  paid: "bg-success/15 text-success",
+  overdue: "bg-destructive/15 text-destructive",
 };
 const statusLabel: Record<string, string> = {
   open: "Aberto", paid: "Pago", overdue: "Atrasado",
@@ -672,51 +672,112 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
     toast.success("Status atualizado.");
   };
 
+  const recOnPage = recPage.pageItems.map(r => r.id);
+  const payOnPage = payPage.pageItems.map(p => p.id);
+  const sortHead = (label: string, key: string, sort: SortState, setSort: (s: SortState) => void, className = "") => (
+    <th className={`cursor-pointer select-none whitespace-nowrap bg-muted/50 text-xs font-medium text-muted-foreground hover:bg-muted ${className}`} onClick={() => setSort({ key, dir: sort.key === key && sort.dir === "asc" ? "desc" : "asc" })}>
+      <span className="inline-flex items-center gap-1">{label}{sort.key === key ? (sort.dir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-40" />}</span>
+    </th>
+  );
+  const plainHead = (label: string, className = "") => <th className={`whitespace-nowrap bg-muted/50 text-xs font-medium text-muted-foreground ${className}`}>{label}</th>;
+  const selectionBar = (count: number, onClear: () => void) => count > 0 && <div className="flex items-center gap-2"><span className="text-xs text-muted-foreground">{count} selecionado(s)</span><Button size="sm" variant="outline" onClick={onClear}>Limpar</Button><Button size="sm" onClick={() => { setSettleDate(today()); setSettleOpen(true); }}><CheckCircle2 className="mr-1 h-4 w-4" />Baixar</Button></div>;
+  const fmtDate = (d?: string) => d ? new Date(d + "T12:00:00").toLocaleDateString("pt-BR") : "-";
+
   return (
-    <ClinicLayout title={section === "receivables" ? "Contas a Receber" : section === "payables" ? "Contas a Pagar" : "Controle de Caixa"} subtitle="Financeiro · Virtuosa">
-      <div className="space-y-6 animate-fade-in">
-        {activeTab !== "cashflow" && <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {activeTab === "payables" ? (
-            <>
-              <StatCard label="Contas a Pagar" value={totals.totalPayables} icon={ArrowDownCircle} tone="danger" />
-              <StatCard label="Contas Pagas" value={totals.paidPayables} icon={DollarSign} tone="primary" />
-            </>
-          ) : (
-            <>
-              <StatCard label="Contas a Receber" value={totals.totalReceivables} icon={ArrowUpCircle} tone="success" />
-              <StatCard label="Contas Recebidas" value={totals.totalPaid} icon={DollarSign} tone="primary" />
-            </>
-          )}
-        </div>}
+    <ClinicLayout title={section === "receivables" ? "Contas a Receber" : section === "payables" ? "Contas a Pagar" : "Controle de Caixa"} subtitle={section === "payables" ? "Gerenciamento de contas a pagar e parcelas" : section === "receivables" ? "Gerenciamento de contas a receber e parcelas" : "Financeiro · Virtuosa"}>
+      <div className="animate-fade-in">
+          {activeTab === "payables" && <>
+            <FinanceFilterPanel value={payDraft} onChange={setPayDraft} onApply={() => setPayApplied(payDraft)} onClear={() => { setPayDraft(emptyFinanceFilters); setPayApplied(emptyFinanceFilters); }}
+              companyOptions={companyOptions} entityLabel="Credor" entityOptions={supplierOptions} categoryOptions={expenseCategoryOptions}
+              description="Refine a consulta por empresa, credor, categoria, status e período de vencimento" />
+            <Tabs value={payView} onValueChange={v => setPayView(v as "entries" | "installments")} className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <TabsList><TabsTrigger value="entries" className="px-4">Contas</TabsTrigger><TabsTrigger value="installments" className="px-4">Parcelas</TabsTrigger></TabsList>
+                <div className="flex flex-wrap items-center gap-2">{selectionBar(selectedPay.length, () => setSelectedPay([]))}<Button size="sm" onClick={() => openPay()}><Plus className="mr-1 h-4 w-4" />Novo</Button></div>
+              </div>
+              <TabsContent value="entries" className="mt-0">
+                <ResultsCard title="Contas a Pagar" count={filteredPayables.length} totals={payEntryTotals}>
+                  <table className="w-full"><thead><tr>
+                    <th className="w-10 bg-muted/50"><input type="checkbox" aria-label="Selecionar página" className="h-4 w-4 accent-primary" checked={payOnPage.length > 0 && payOnPage.every(id => selectedPay.includes(id))} onChange={e => setSelectedPay(e.target.checked ? Array.from(new Set([...selectedPay, ...payOnPage])) : selectedPay.filter(id => !payOnPage.includes(id)))} /></th>
+                    {sortHead("Credor", "supplier", paySort, setPaySort)}{sortHead("Empresa", "company", paySort, setPaySort, "hidden lg:table-cell")}{sortHead("Categoria", "category", paySort, setPaySort, "hidden xl:table-cell")}{plainHead("Descrição", "hidden md:table-cell")}{plainHead("Parcela")}{sortHead("Valor", "amount", paySort, setPaySort, "text-right")}{sortHead("Vencimento", "dueDate", paySort, setPaySort)}{sortHead("Status", "status", paySort, setPaySort)}{plainHead("Ações", "text-right")}
+                  </tr></thead><tbody>
+                    {loading ? <EmptyRow text="Carregando lançamentos..." span={10} /> : payPage.pageItems.map(p => {
+                      const paidCount = p.installments.filter(item => item.status === "paid").length;
+                      const count = p.installments.length || p.installmentsCount || 1;
+                      return <tr key={p.id} className="border-b border-border/50 hover:bg-muted/30">
+                        <td><input type="checkbox" aria-label="Selecionar" className="h-4 w-4 accent-primary" checked={selectedPay.includes(p.id)} onChange={() => toggle(selectedPay, setSelectedPay, p.id)} /></td>
+                        <td className="font-medium text-foreground">{p.supplier}</td>
+                        <td className="hidden text-muted-foreground lg:table-cell">{companyName(p.companyId, p.companyName)}</td>
+                        <td className="hidden text-xs text-muted-foreground xl:table-cell">{p.category || "-"}</td>
+                        <td className="hidden max-w-[260px] truncate text-xs uppercase text-muted-foreground md:table-cell" title={p.description}>{p.description}</td>
+                        <td className="text-muted-foreground">{paidCount}/{count}</td>
+                        <td className="whitespace-nowrap text-right font-semibold text-foreground">{formatCurrency(p.amount)}</td>
+                        <td className="whitespace-nowrap text-muted-foreground">{fmtDate(p.dueDate)}</td>
+                        <td><StatusSelect value={p.status as FinancialStatus} onChange={(status) => updatePayableStatus(p, status)} /></td>
+                        <td className="text-right"><ActionButtons onEdit={() => openPay(p)} onDelete={() => setDeletePayId(p.id)} /></td>
+                      </tr>;
+                    })}
+                    {!loading && filteredPayables.length === 0 && <EmptyRow text="Nenhuma conta encontrada" span={10} />}
+                  </tbody></table>
+                  <TablePagination {...payPage} />
+                </ResultsCard>
+              </TabsContent>
+              <TabsContent value="installments" className="mt-0">
+                <ResultsCard title="Parcelas a Pagar" count={payableInstallmentRows.length} totals={payInstTotals}>
+                  <table className="w-full"><thead><tr>{plainHead("Credor")}{plainHead("Empresa", "hidden lg:table-cell")}{plainHead("Descrição", "hidden md:table-cell")}{plainHead("Parcela")}{plainHead("Valor", "text-right")}{plainHead("Vencimento")}{plainHead("Pagamento")}{plainHead("Status")}</tr></thead><tbody>
+                    {payInstPage.pageItems.map(row => <tr key={row.key} className="border-b border-border/50 hover:bg-muted/30"><td className="font-medium text-foreground">{row.pay.supplier}</td><td className="hidden text-muted-foreground lg:table-cell">{companyName(row.pay.companyId, row.pay.companyName)}</td><td className="hidden max-w-[260px] truncate text-xs uppercase text-muted-foreground md:table-cell">{row.pay.description}</td><td className="text-muted-foreground">{row.inst.installmentNumber}/{row.count}</td><td className="whitespace-nowrap text-right font-semibold text-foreground">{formatCurrency(row.inst.amount)}</td><td className="whitespace-nowrap text-muted-foreground">{fmtDate(row.inst.dueDate)}</td><td className="whitespace-nowrap text-muted-foreground">{fmtDate(row.inst.paidDate)}</td><td><StatusPill status={row.inst.status} /></td></tr>)}
+                    {!loading && payableInstallmentRows.length === 0 && <EmptyRow text="Nenhuma parcela encontrada" span={8} />}
+                  </tbody></table>
+                  <TablePagination {...payInstPage} />
+                </ResultsCard>
+              </TabsContent>
+            </Tabs>
+          </>}
 
-
-
-          {activeTab === "receivables" && <div>
-            <FinanceFilters options={clientOptions} searchLabel="Cliente" search={receivableFilter} onSearch={setReceivableFilter} start={receivableStart} onStart={setReceivableStart} end={receivableEnd} onEnd={setReceivableEnd} />
-            {(selectedRec).length > 0 && <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3"><span className="text-sm text-foreground">{(selectedRec).length} lancamento(s) selecionado(s)</span><div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => setSelectedRec([])}>Limpar</Button><Button size="sm" onClick={() => { setSettleDate(today()); setSettleOpen(true); }}><CheckCircle2 className="mr-1 h-4 w-4" />Baixar</Button></div></div>}
-            <div className="mb-3 inline-flex rounded-lg border border-border bg-muted/40 p-1"><Button size="sm" variant={recView === "entries" ? "default" : "ghost"} onClick={() => setRecView("entries")}>Lançamentos</Button><Button size="sm" variant={recView === "installments" ? "default" : "ghost"} onClick={() => setRecView("installments")}>Parcelas</Button></div>
-            {recView === "installments" ? <Card className="overflow-hidden"><div className="overflow-x-auto"><table className="w-full"><thead><tr className="border-b border-border bg-muted/50"><th className="text-left text-xs font-medium text-muted-foreground p-3">Cliente</th><th className="text-left text-xs font-medium text-muted-foreground p-3">Empresa</th><th className="text-left text-xs font-medium text-muted-foreground p-3">Procedimento</th><th className="text-left text-xs font-medium text-muted-foreground p-3">Parcela</th><th className="text-left text-xs font-medium text-muted-foreground p-3">Valor</th><th className="text-left text-xs font-medium text-muted-foreground p-3">Vencimento</th><th className="text-left text-xs font-medium text-muted-foreground p-3">Status</th></tr></thead><tbody>{receivableInstallments.map(row => <tr key={row.key} className="border-b border-border/50 hover:bg-muted/30"><td className="p-3 text-sm font-medium text-foreground">{row.rec.patientName}</td><td className="p-3 text-sm text-muted-foreground">{companyName(row.rec.companyId, row.rec.companyName)}</td><td className="p-3 text-sm text-muted-foreground">{row.rec.procedure}</td><td className="p-3 text-sm text-muted-foreground">{row.number}/{row.count}</td><td className="p-3 text-sm font-semibold text-foreground">{formatCurrency(row.amount)}</td><td className="p-3 text-sm text-muted-foreground">{new Date(row.dueDate + "T12:00:00").toLocaleDateString("pt-BR")}</td><td className="p-3"><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusBadge[row.rec.status]}`}>{statusLabel[row.rec.status]}</span></td></tr>)}{receivableInstallments.length === 0 && <EmptyRow text="Nenhuma parcela encontrada." span={7} />}</tbody></table></div></Card> : <>            <FinanceTable title="Contas a Receber" onNew={() => openRec()} headers={["", "Cliente", "Procedimento", "Valor", "Pagamento", "Vencimento", "Status", "Acoes"]}>
-              {loading ? <EmptyRow text="Carregando lancamentos..." span={8} /> : filteredReceivables.map(r => <tr key={r.id} className="border-b border-border/50 hover:bg-muted/30"><td className="p-3 w-8"><input type="checkbox" aria-label="Selecionar" className="h-4 w-4 accent-primary" checked={selectedRec.includes(r.id)} onChange={() => toggle(selectedRec, setSelectedRec, r.id)} /></td><td className="p-3 text-sm font-medium text-foreground">{r.patientName}</td><td className="p-3 text-sm text-muted-foreground">{r.procedure}</td><td className="p-3 text-sm font-semibold text-foreground text-right">{formatCurrency(r.amount)}</td><td className="p-3 text-sm text-muted-foreground hidden md:table-cell">{r.paymentMethod}{r.installments > 1 ? ` (${r.installments}x)` : ""}</td><td className="p-3 text-sm text-muted-foreground">{new Date(r.dueDate + "T12:00:00").toLocaleDateString("pt-BR")}</td><td className="p-3"><StatusSelect value={r.status as FinancialStatus} onChange={(status) => updateReceivableStatus(r, status)} /></td><td className="p-3 text-right"><ActionButtons onEdit={() => openRec(r)} onDelete={() => setDeleteRecId(r.id)} /></td></tr>)}
-              {!loading && filteredReceivables.length === 0 && <EmptyRow text="Nenhuma conta a receber encontrada." span={8} />}
-            </FinanceTable></>}
-          </div>}
-
-          {activeTab === "payables" && <div>
-            <FinanceFilters options={supplierOptions} searchLabel="Credor" search={payableFilter} onSearch={setPayableFilter} start={payableStart} onStart={setPayableStart} end={payableEnd} onEnd={setPayableEnd} />
-            {(selectedPay).length > 0 && <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3"><span className="text-sm text-foreground">{(selectedPay).length} lancamento(s) selecionado(s)</span><div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => setSelectedPay([])}>Limpar</Button><Button size="sm" onClick={() => { setSettleDate(today()); setSettleOpen(true); }}><CheckCircle2 className="mr-1 h-4 w-4" />Baixar</Button></div></div>}
-            <div className="mb-3 inline-flex rounded-lg border border-border bg-muted/40 p-1"><Button size="sm" variant={payView === "entries" ? "default" : "ghost"} onClick={() => setPayView("entries")}>Lançamentos</Button><Button size="sm" variant={payView === "installments" ? "default" : "ghost"} onClick={() => setPayView("installments")}>Parcelas</Button></div>
-            {payView === "installments" ? <Card className="overflow-hidden"><div className="overflow-x-auto"><table className="w-full"><thead><tr className="border-b border-border bg-muted/50"><th className="text-left text-xs font-medium text-muted-foreground p-3">Credor</th><th className="text-left text-xs font-medium text-muted-foreground p-3">Empresa</th><th className="text-left text-xs font-medium text-muted-foreground p-3">Descricao</th><th className="text-left text-xs font-medium text-muted-foreground p-3">Parcela</th><th className="text-left text-xs font-medium text-muted-foreground p-3">Valor</th><th className="text-left text-xs font-medium text-muted-foreground p-3">Vencimento</th><th className="text-left text-xs font-medium text-muted-foreground p-3">Pagamento</th><th className="text-left text-xs font-medium text-muted-foreground p-3">Status</th></tr></thead><tbody>{payableInstallmentRows.map(row => <tr key={row.key} className="border-b border-border/50 hover:bg-muted/30"><td className="p-3 text-sm font-medium text-foreground">{row.pay.supplier}</td><td className="p-3 text-sm text-muted-foreground">{companyName(row.pay.companyId, row.pay.companyName)}</td><td className="p-3 text-sm text-muted-foreground">{row.pay.description}</td><td className="p-3 text-sm text-muted-foreground">{row.inst.installmentNumber}/{row.count}</td><td className="p-3 text-sm font-semibold text-foreground">{formatCurrency(row.inst.amount)}</td><td className="p-3 text-sm text-muted-foreground">{new Date(row.inst.dueDate + "T12:00:00").toLocaleDateString("pt-BR")}</td><td className="p-3 text-sm text-muted-foreground">{row.inst.paidDate ? new Date(row.inst.paidDate + "T12:00:00").toLocaleDateString("pt-BR") : "-"}</td><td className="p-3"><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusBadge[row.inst.status]}`}>{statusLabel[row.inst.status]}</span></td></tr>)}{payableInstallmentRows.length === 0 && <EmptyRow text="Nenhuma parcela encontrada." span={8} />}</tbody></table></div></Card> : <>            <FinanceTable title="Contas a Pagar" onNew={() => openPay()} headers={["", "Credor", "Descricao", "Parcelas", "Valor", "Proximo vencimento", "Status", "Acoes"]}>
-              {loading ? <EmptyRow text="Carregando lancamentos..." span={8} /> : filteredPayables.map(p => {
-                const paidCount = p.installments.filter(item => item.status === "paid").length;
-                const count = p.installments.length || p.installmentsCount || 1;
-                return <tr key={p.id} className="border-b border-border/50 hover:bg-muted/30"><td className="p-3 w-8"><input type="checkbox" aria-label="Selecionar" className="h-4 w-4 accent-primary" checked={selectedPay.includes(p.id)} onChange={() => toggle(selectedPay, setSelectedPay, p.id)} /></td><td className="p-3 text-sm font-medium text-foreground">{p.supplier}</td><td className="p-3 text-sm text-muted-foreground">{p.description}</td><td className="p-3 text-sm text-muted-foreground hidden md:table-cell">{paidCount}/{count}</td><td className="p-3 text-sm font-semibold text-foreground text-right">{formatCurrency(p.amount)}</td><td className="p-3 text-sm text-muted-foreground">{new Date(p.dueDate + "T12:00:00").toLocaleDateString("pt-BR")}</td><td className="p-3"><StatusSelect value={p.status as FinancialStatus} onChange={(status) => updatePayableStatus(p, status)} /></td><td className="p-3 text-right"><ActionButtons onEdit={() => openPay(p)} onDelete={() => setDeletePayId(p.id)} /></td></tr>;
-              })}
-              {!loading && filteredPayables.length === 0 && <EmptyRow text="Nenhuma conta a pagar encontrada." span={8} />}
-            </FinanceTable></>}
-          </div>}
+          {activeTab === "receivables" && <>
+            <FinanceFilterPanel value={recDraft} onChange={setRecDraft} onApply={() => setRecApplied(recDraft)} onClear={() => { setRecDraft(emptyFinanceFilters); setRecApplied(emptyFinanceFilters); }}
+              companyOptions={companyOptions} entityLabel="Cliente" entityOptions={clientOptions} categoryOptions={incomeCategoryOptions}
+              description="Refine a consulta por empresa, cliente, categoria, status e período de vencimento" />
+            <Tabs value={recView} onValueChange={v => setRecView(v as "entries" | "installments")} className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <TabsList><TabsTrigger value="entries" className="px-4">Contas</TabsTrigger><TabsTrigger value="installments" className="px-4">Parcelas</TabsTrigger></TabsList>
+                <div className="flex flex-wrap items-center gap-2">{selectionBar(selectedRec.length, () => setSelectedRec([]))}<Button size="sm" onClick={() => openRec()}><Plus className="mr-1 h-4 w-4" />Novo</Button></div>
+              </div>
+              <TabsContent value="entries" className="mt-0">
+                <ResultsCard title="Contas a Receber" count={filteredReceivables.length} totals={recEntryTotals}>
+                  <table className="w-full"><thead><tr>
+                    <th className="w-10 bg-muted/50"><input type="checkbox" aria-label="Selecionar página" className="h-4 w-4 accent-primary" checked={recOnPage.length > 0 && recOnPage.every(id => selectedRec.includes(id))} onChange={e => setSelectedRec(e.target.checked ? Array.from(new Set([...selectedRec, ...recOnPage])) : selectedRec.filter(id => !recOnPage.includes(id)))} /></th>
+                    {sortHead("Cliente", "client", recSort, setRecSort)}{sortHead("Empresa", "company", recSort, setRecSort, "hidden lg:table-cell")}{sortHead("Procedimento", "procedure", recSort, setRecSort, "hidden md:table-cell")}{plainHead("Pagamento", "hidden xl:table-cell")}{sortHead("Valor", "amount", recSort, setRecSort, "text-right")}{sortHead("Vencimento", "dueDate", recSort, setRecSort)}{sortHead("Status", "status", recSort, setRecSort)}{plainHead("Ações", "text-right")}
+                  </tr></thead><tbody>
+                    {loading ? <EmptyRow text="Carregando lançamentos..." span={9} /> : recPage.pageItems.map(r => <tr key={r.id} className="border-b border-border/50 hover:bg-muted/30">
+                      <td><input type="checkbox" aria-label="Selecionar" className="h-4 w-4 accent-primary" checked={selectedRec.includes(r.id)} onChange={() => toggle(selectedRec, setSelectedRec, r.id)} /></td>
+                      <td className="font-medium text-foreground">{r.patientName}</td>
+                      <td className="hidden text-muted-foreground lg:table-cell">{companyName(r.companyId, r.companyName)}</td>
+                      <td className="hidden text-muted-foreground md:table-cell">{r.procedure}</td>
+                      <td className="hidden text-muted-foreground xl:table-cell">{r.paymentMethod}{r.installments > 1 ? ` (${r.installments}x)` : ""}</td>
+                      <td className="whitespace-nowrap text-right font-semibold text-foreground">{formatCurrency(r.amount)}</td>
+                      <td className="whitespace-nowrap text-muted-foreground">{fmtDate(r.dueDate)}</td>
+                      <td><StatusSelect value={r.status as FinancialStatus} onChange={(status) => updateReceivableStatus(r, status)} /></td>
+                      <td className="text-right"><ActionButtons onEdit={() => openRec(r)} onDelete={() => setDeleteRecId(r.id)} /></td>
+                    </tr>)}
+                    {!loading && filteredReceivables.length === 0 && <EmptyRow text="Nenhuma conta encontrada" span={9} />}
+                  </tbody></table>
+                  <TablePagination {...recPage} />
+                </ResultsCard>
+              </TabsContent>
+              <TabsContent value="installments" className="mt-0">
+                <ResultsCard title="Parcelas a Receber" count={receivableInstallments.length} totals={recInstTotals}>
+                  <table className="w-full"><thead><tr>{plainHead("Cliente")}{plainHead("Empresa", "hidden lg:table-cell")}{plainHead("Procedimento", "hidden md:table-cell")}{plainHead("Parcela")}{plainHead("Valor", "text-right")}{plainHead("Vencimento")}{plainHead("Status")}</tr></thead><tbody>
+                    {recInstPage.pageItems.map(row => <tr key={row.key} className="border-b border-border/50 hover:bg-muted/30"><td className="font-medium text-foreground">{row.rec.patientName}</td><td className="hidden text-muted-foreground lg:table-cell">{companyName(row.rec.companyId, row.rec.companyName)}</td><td className="hidden text-muted-foreground md:table-cell">{row.rec.procedure}</td><td className="text-muted-foreground">{row.number}/{row.count}</td><td className="whitespace-nowrap text-right font-semibold text-foreground">{formatCurrency(row.amount)}</td><td className="whitespace-nowrap text-muted-foreground">{fmtDate(row.dueDate)}</td><td><StatusPill status={row.rec.status} /></td></tr>)}
+                    {!loading && receivableInstallments.length === 0 && <EmptyRow text="Nenhuma parcela encontrada" span={7} />}
+                  </tbody></table>
+                  <TablePagination {...recInstPage} />
+                </ResultsCard>
+              </TabsContent>
+            </Tabs>
+          </>}
 
           {activeTab === "cashflow" && <CashControl />}
-
 
         <Dialog open={showRecForm} onOpenChange={open => { setShowRecForm(open); if (!open) setEditingRec(null); }}><DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>{editingRec ? "Editar Conta a Receber" : "Nova Conta a Receber"}</DialogTitle></DialogHeader><div className="grid grid-cols-2 gap-3 mt-2"><div className="col-span-2"><EntitySearchInput advanced label="Empresa *" value={companies.find(c => c.id === recForm.companyId)?.name || ""} options={companyOptions.filter(o => companies.find(c => c.id === o.id)?.active || o.id === recForm.companyId)} placeholder="Selecione a empresa" onQueryChange={() => setRecForm({ ...recForm, companyId: undefined, companyName: "", procedure: "" })} onSelect={o => setRecForm({ ...recForm, companyId: o.id, companyName: o.label, procedure: "" })} /></div><div className="col-span-2"><EntitySearchInput advanced label="Cliente" value={recForm.patientName} options={clientOptions} placeholder="Digite para procurar cliente" onQueryChange={patientName => setRecForm({ ...recForm, patientName, patientId: "" })} onSelect={option => setRecForm({ ...recForm, patientId: option.id, patientName: option.label })} /></div><div className="col-span-2"><EntitySearchInput advanced label="Procedimento" value={recForm.procedure} options={procedureOptions} allowCustom placeholder="Digite para procurar procedimento" onQueryChange={procedure => setRecForm({ ...recForm, procedure })} onSelect={option => setRecForm({ ...recForm, procedure: option.label })} /></div><div className="col-span-2"><EntitySearchInput advanced label="Categoria" value={recForm.category || ""} options={incomeCategoryOptions} allowCustom placeholder="Digite para procurar categoria de receita" onQueryChange={category => setRecForm({ ...recForm, category })} onSelect={option => setRecForm({ ...recForm, category: option.label })} /></div><div><Label>Valor</Label><Input inputMode="numeric" value={formatCurrency(recForm.amount)} onChange={e => setRecForm({ ...recForm, amount: parseCurrencyInput(e.target.value) })} /></div><div><Label>Parcelas</Label><Input type="number" value={recForm.installments} onChange={e => setRecForm({ ...recForm, installments: Number(e.target.value) })} /></div><div><Label>Forma de Pagamento</Label><Select value={recForm.paymentMethod} onValueChange={paymentMethod => setRecForm({ ...recForm, paymentMethod })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{paymentMethods.map(method => <SelectItem key={method} value={method}>{method}</SelectItem>)}</SelectContent></Select></div><div><Label>Vencimento</Label><Input type="date" value={recForm.dueDate} onChange={e => setRecForm({ ...recForm, dueDate: e.target.value })} /></div><div className="col-span-2"><Label>Status</Label><Select value={recForm.status} onValueChange={(status: "open" | "paid" | "overdue") => setRecForm({ ...recForm, status })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="open">Aberto</SelectItem><SelectItem value="paid">Pago</SelectItem><SelectItem value="overdue">Atrasado</SelectItem></SelectContent></Select></div></div><div className="flex justify-end gap-2 mt-4"><Button variant="outline" onClick={() => setShowRecForm(false)}>Cancelar</Button><Button onClick={saveReceivable}>{editingRec ? "Atualizar" : "Salvar"}</Button></div></DialogContent></Dialog>
 
@@ -730,32 +791,29 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
   );
 }
 
-function StatCard({ label, value, icon: Icon, tone }: { label: string; value: number; icon: typeof DollarSign; tone: "success" | "primary" | "danger" }) {
-  const toneClass = tone === "success" ? "bg-success/10 text-success" : tone === "danger" ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary";
+type Totals = { total: number; open: number; paid: number };
+
+function ResultsCard({ title, count, totals, children }: { title: string; count: number; totals: Totals; children: ReactNode }) {
   return (
-    <Card className="stat-card">
-      <div className="flex items-center gap-3">
-        <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${toneClass}`}><Icon className="h-5 w-5" /></div>
-        <div><p className="text-xs text-muted-foreground">{label}</p><p className="text-xl font-bold text-foreground">{formatCurrency(value)}</p></div>
+    <Card className="overflow-hidden rounded-lg border-border/50 shadow-sm">
+      <div className="flex flex-col gap-3 border-b border-border px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+          <p className="text-xs text-muted-foreground">{count} item(ns) encontrados</p>
+        </div>
+        <div className="flex flex-wrap gap-4 text-xs">
+          <span className="text-muted-foreground">Total <strong className="ml-1 text-foreground">{formatCurrency(totals.total)}</strong></span>
+          <span className="text-muted-foreground">Em aberto <strong className="ml-1 text-destructive">{formatCurrency(totals.open)}</strong></span>
+          <span className="text-muted-foreground">Pago <strong className="ml-1 text-success">{formatCurrency(totals.paid)}</strong></span>
+        </div>
       </div>
+      <div className="overflow-auto">{children}</div>
     </Card>
   );
 }
 
-function FinanceFilters({ options, searchLabel, search, onSearch, start, onStart, end, onEnd }: { options?: EntitySearchOption[]; searchLabel: string; search: string; onSearch: (value: string) => void; start: string; onStart: (value: string) => void; end: string; onEnd: (value: string) => void }) {
-  return (
-    <div className="border-b border-border pb-4 mb-4">
-      <div className="grid grid-cols-1 md:grid-cols-[1fr_180px_180px] gap-3">
-        {options ? <EntitySearchInput advanced label={searchLabel} value={search} options={options} placeholder="Nome, razão social ou CPF/CNPJ" onQueryChange={onSearch} onSelect={(o) => onSearch(o.label)} /> : <div><Label>{searchLabel}</Label><div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input className="pl-9" value={search} onChange={(event) => onSearch(event.target.value)} placeholder="Nome, razão social ou CPF/CNPJ" /></div></div>}
-        <div><Label>Data inicial</Label><Input type="date" value={start} onChange={(event) => onStart(event.target.value)} /></div>
-        <div><Label>Data final</Label><Input type="date" value={end} onChange={(event) => onEnd(event.target.value)} /></div>
-      </div>
-    </div>
-  );
-}
-
-function FinanceTable({ title, onNew, headers, children }: { title: string; onNew: () => void; headers: string[]; children: ReactNode }) {
-  return <Card className="overflow-hidden"><div className="p-4 border-b border-border flex justify-between items-center"><h3 className="text-sm font-semibold">{title}</h3><Button size="sm" onClick={onNew}><Plus className="h-3.5 w-3.5 mr-1" />Novo</Button></div><div className="overflow-x-auto"><table className="w-full"><thead><tr className="border-b border-border bg-muted/50">{headers.map((h, i) => <th key={h} className={`${i === headers.length - 1 || h === "Valor" ? "text-right" : h === "Status" ? "text-center" : "text-left"} text-xs font-medium text-muted-foreground p-3 ${["Profissional", "Pagamento", "Categoria", "Parcelas"].includes(h) ? "hidden md:table-cell" : ""}`}>{h}</th>)}</tr></thead><tbody>{children}</tbody></table></div></Card>;
+function StatusPill({ status }: { status: string }) {
+  return <span className={`rounded-md px-2.5 py-1 text-[11px] font-semibold ${statusBadge[status]}`}>{statusLabel[status]}</span>;
 }
 
 function ActionButtons({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
@@ -765,7 +823,7 @@ function ActionButtons({ onEdit, onDelete }: { onEdit: () => void; onDelete: () 
 function StatusSelect({ value, onChange }: { value: FinancialStatus; onChange: (status: FinancialStatus) => void }) {
   return (
     <Select value={value} onValueChange={(status: FinancialStatus) => onChange(status)}>
-      <SelectTrigger className={`h-8 min-w-[112px] border-0 text-xs font-medium ${statusBadge[value]}`}>
+      <SelectTrigger className={`h-7 w-[108px] rounded-md border-transparent px-2.5 text-[11px] font-semibold shadow-none [&>svg]:text-current ${statusBadge[value]}`}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
