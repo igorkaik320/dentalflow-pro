@@ -20,11 +20,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FinanceFilterPanel, emptyFinanceFilters, type FinanceFilters } from "@/components/FinanceFilterPanel";
 import { TablePagination, usePagination } from "@/components/TablePagination";
 
-type CompanyRow = { id: string; name: string; legalName: string; cnpj: string; active: boolean };
+type CompanyRow = { code: number; id: string; name: string; legalName: string; cnpj: string; active: boolean };
 type BankAccountRow = { id: string; name: string; initialDate: string; initialBalance: number; active: boolean; companyId?: string; accountType: string };
 
 type ReceivableForm = Omit<Receivable, "id" | "professionalId">;
-type ClientOption = { id: string; name: string; cpf?: string };
+type ClientOption = { code: number; id: string; name: string; cpf?: string };
 type ProcedureOption = { companyId?: string; id: string; name: string; defaultPrice: number; averageDuration: number };
 type FinancialStatus = "open" | "paid" | "overdue";
 type InstallmentForm = Omit<PayableInstallment, "payableId">;
@@ -228,6 +228,7 @@ function mapCategory(row: any): FinancialCategory {
 function mapSupplier(row: any): Supplier {
   return {
     id: row.id,
+    code: Number(row.code),
     externalId: row.external_id || undefined,
     name: row.name || "",
     legalName: row.legal_name || "",
@@ -284,13 +285,13 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
 
   useEffect(() => {
     if (!clinic.id) return;
-    void db.from("companies").select("id, name, legal_name, cnpj, active").eq("clinic_id", clinic.id).order("name").then(({ data }) => {
-      setCompanies((data || []).map((c: any) => ({ id: c.id, name: c.name, legalName: c.legal_name || "", cnpj: c.cnpj || "", active: c.active })));
+    void db.from("companies").select("id, code, name, legal_name, cnpj, active").eq("clinic_id", clinic.id).order("name").then(({ data }) => {
+      setCompanies((data || []).map((c: any) => ({ id: c.id, code: Number(c.code), name: c.name, legalName: c.legal_name || "", cnpj: c.cnpj || "", active: c.active })));
     });
   }, [clinic.id]);
   const companyById = useMemo(() => new Map(companies.map((c) => [c.id, c])), [companies]);
   const companyName = (id?: string, fallback?: string) => (id && companyById.get(id)?.name) || fallback || "-";
-  const companyOptions = useMemo(() => companies.map(c => ({ id: c.id, code: c.id.slice(0, 8).toUpperCase(), label: c.name, legalName: c.legalName, document: c.cnpj })), [companies]);
+  const companyOptions = useMemo(() => companies.map(c => ({ id: c.id, code: String(c.code), label: c.name, legalName: c.legalName, document: c.cnpj })), [companies]);
 
   useEffect(() => {
     if (!clinic.id) {
@@ -310,7 +311,7 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
       db.from("professionals").select("*").eq("clinic_id", clinic.id).order("name"),
       db.from("financial_categories").select("*").eq("clinic_id", clinic.id).order("type").order("name"),
       db.from("suppliers").select("*").eq("clinic_id", clinic.id).order("name"),
-      db.from("patients").select("id, name, cpf").eq("clinic_id", clinic.id).order("name"),
+      db.from("patients").select("id, code, name, cpf").eq("clinic_id", clinic.id).order("name"),
       db.from("procedures").select("id, name, default_price, average_duration, company_id").eq("clinic_id", clinic.id).order("name"),
     ]);
     const bankRes = await bankPromise;
@@ -323,7 +324,7 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
     setProfessionals((profRes.data || []).map(mapProfessional));
     setCategories((catRes.data || []).map(mapCategory));
     setSuppliers((supplierRes.data || []).map(mapSupplier));
-    setClients((clientRes.data || []).map((client: any) => ({ id: client.id, name: client.name || "", cpf: client.cpf || "" })));
+    setClients((clientRes.data || []).map((client: any) => ({ id: client.id, code: Number(client.code), name: client.name || "", cpf: client.cpf || "" })));
     setProcedures((procedureRes.data || []).map((procedure: any) => ({
       id: procedure.id,
       companyId: procedure.company_id || undefined,
@@ -337,16 +338,16 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
   const expenseCategories = useMemo(() => categories.filter(c => c.type === "expense"), [categories]);
   const incomeCategoryOptions = useMemo(() => incomeCategories.map((category) => ({ id: category.id, label: category.name, description: "Receita" })), [incomeCategories]);
   const expenseCategoryOptions = useMemo(() => expenseCategories.map((category) => ({ id: category.id, label: category.name, description: "Despesa" })), [expenseCategories]);
-  const clientOptions = useMemo(() => clients.map((client, i) => ({ id: client.id, code: String(i + 1), label: client.name, document: client.cpf || "", description: client.cpf || undefined, search: client.cpf || "" })), [clients]);
+  const clientOptions = useMemo(() => clients.map((client) => ({ id: client.id, code: String(client.code), label: client.name, document: client.cpf || "", description: client.cpf || undefined, search: client.cpf || "" })), [clients]);
   const procedureOptions = useMemo(() => procedures.filter(p => p.companyId === recForm.companyId).map((procedure) => ({
     id: procedure.id,
     label: procedure.name,
     description: formatCurrency(procedure.defaultPrice),
     search: `${procedure.defaultPrice} ${procedure.averageDuration}`,
   })), [procedures, recForm.companyId]);
-  const supplierOptions = useMemo(() => suppliers.map((supplier, i) => ({
+  const supplierOptions = useMemo(() => suppliers.map((supplier) => ({
     id: supplier.id,
-    code: String(i + 1),
+    code: String(supplier.code),
     legalName: supplier.legalName || "",
     document: supplier.document || supplier.cnpj || "",
     label: supplier.name,

@@ -14,8 +14,8 @@ import { formatCNPJ } from "@/lib/utils";
 import { toast } from "sonner";
 import { Plus, Edit2, Trash2, Building2 } from "lucide-react";
 
-type Company = { id: string; name: string; legal_name: string | null; cnpj: string | null; phone: string | null; email: string | null; address: string | null; active: boolean };
-type Form = Omit<Company, "id">;
+type Company = { code: number; id: string; name: string; legal_name: string | null; cnpj: string | null; phone: string | null; email: string | null; address: string | null; active: boolean };
+type Form = Omit<Company, "id" | "code">;
 const empty: Form = { name: "", legal_name: "", cnpj: "", phone: "", email: "", address: "", active: true };
 
 export function CompaniesTab() {
@@ -23,7 +23,7 @@ export function CompaniesTab() {
   const [rows, setRows] = useState<Company[]>([]);
   const [search, setSearch] = useState("");
   const normalize = (text: string) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-  const filteredRows = rows.filter(c => normalize(`${c.id.slice(0, 8)} ${c.name} ${c.legal_name || ""} ${c.cnpj || ""}`).includes(normalize(search)) || (search.replace(/\D/g, "").length >= 3 && (c.cnpj || "").replace(/\D/g, "").includes(search.replace(/\D/g, ""))));
+  const filteredRows = rows.filter(c => normalize(`${c.code} ${c.name} ${c.legal_name || ""} ${c.cnpj || ""}`).includes(normalize(search)) || (search.replace(/\D/g, "").length >= 3 && (c.cnpj || "").replace(/\D/g, "").includes(search.replace(/\D/g, ""))));
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Company | null>(null);
   const [form, setForm] = useState<Form>(empty);
@@ -39,7 +39,7 @@ export function CompaniesTab() {
 
   const openForm = (c?: Company) => {
     setEditing(c || null);
-    setForm(c ? { ...c } : empty);
+    setForm(c ? { name: c.name, legal_name: c.legal_name, cnpj: c.cnpj, phone: c.phone, email: c.email, address: c.address, active: c.active } : empty);
     setOpen(true);
   };
 
@@ -65,7 +65,7 @@ export function CompaniesTab() {
   };
 
   return <>
-    <div className="mb-4 max-w-xl"><EntitySearchInput advanced label="Empresa" value={search} options={filteredRows.map(c => ({ id: c.id, code: c.id.slice(0, 8).toUpperCase(), label: c.name, legalName: c.legal_name || "", document: c.cnpj || "" }))} placeholder="Nome, razão social ou CNPJ" onQueryChange={setSearch} onSelect={o => setSearch(o.label)} /></div>
+    <div className="mb-4 max-w-xl"><EntitySearchInput advanced label="Empresa" value={search} options={rows.map(c => ({ id: c.id, code: String(c.code), label: c.name, legalName: c.legal_name || "", document: c.cnpj || "" }))} placeholder="Nome, razão social ou CNPJ" onQueryChange={setSearch} onSelect={o => setSearch(o.label)} /></div>
     <Card>
       <div className="flex items-center justify-between p-4 border-b border-border">
         <span className="text-sm text-muted-foreground">{filteredRows.length} empresas cadastradas</span>
@@ -73,7 +73,7 @@ export function CompaniesTab() {
       </div>
       <div className="overflow-x-auto"><table className="w-full">
         <thead><tr className="border-b border-border bg-muted/50">
-          <th className="text-left text-xs font-medium text-muted-foreground p-3">Empresa</th>
+          <th className="text-left text-xs font-medium text-muted-foreground p-3">Código</th><th className="text-left text-xs font-medium text-muted-foreground p-3">Empresa</th>
           <th className="text-left text-xs font-medium text-muted-foreground p-3 hidden md:table-cell">CNPJ</th>
           <th className="text-left text-xs font-medium text-muted-foreground p-3 hidden md:table-cell">Contato</th>
           <th className="text-left text-xs font-medium text-muted-foreground p-3">Situação</th>
@@ -81,19 +81,19 @@ export function CompaniesTab() {
         </tr></thead>
         <tbody>
           {filteredRows.map(c => <tr key={c.id} className="border-b border-border/50 hover:bg-muted/30">
-            <td className="p-3"><div className="flex items-center gap-2"><Building2 className="h-4 w-4 text-primary" /><div><p className="text-sm font-medium text-foreground">{c.name}</p>{c.legal_name && <p className="text-xs text-muted-foreground">{c.legal_name}</p>}</div></div></td>
+            <td className="p-3 text-sm text-muted-foreground">{c.code}</td><td className="p-3"><div className="flex items-center gap-2"><Building2 className="h-4 w-4 text-primary" /><div><p className="text-sm font-medium text-foreground">{c.name}</p>{c.legal_name && <p className="text-xs text-muted-foreground">{c.legal_name}</p>}</div></div></td>
             <td className="p-3 text-sm text-muted-foreground hidden md:table-cell">{c.cnpj || "-"}</td>
             <td className="p-3 text-sm text-muted-foreground hidden md:table-cell">{[c.phone, c.email].filter(Boolean).join(" · ") || "-"}</td>
             <td className="p-3"><Badge variant={c.active ? "default" : "secondary"}>{c.active ? "Ativa" : "Inativa"}</Badge></td>
             <td className="p-3 text-right"><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openForm(c)}><Edit2 className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteId(c.id)}><Trash2 className="h-4 w-4" /></Button></td>
           </tr>)}
-          {filteredRows.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-sm text-muted-foreground">Nenhuma empresa encontrada.</td></tr>}
+          {filteredRows.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-sm text-muted-foreground">Nenhuma empresa encontrada.</td></tr>}
         </tbody>
       </table></div>
     </Card>
 
     <Dialog open={open} onOpenChange={setOpen}><DialogContent className="max-w-lg"><DialogHeader><DialogTitle>{editing ? "Editar Empresa" : "Nova Empresa"}</DialogTitle></DialogHeader>
-      <div className="grid grid-cols-2 gap-3 mt-2">
+      <div className="grid grid-cols-2 gap-3 mt-2"><div className="col-span-2 space-y-1.5"><Label>Código</Label><Input value={editing?.code ?? "Automático"} readOnly /></div>
         <div className="col-span-2 space-y-1.5"><Label>Nome fantasia *</Label><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
         <div className="col-span-2 space-y-1.5"><Label>Razão social</Label><Input value={form.legal_name || ""} onChange={e => setForm({ ...form, legal_name: e.target.value })} /></div>
         <div className="space-y-1.5"><Label>CNPJ</Label><Input value={form.cnpj || ""} onChange={e => setForm({ ...form, cnpj: formatCNPJ(e.target.value) })} /></div>
