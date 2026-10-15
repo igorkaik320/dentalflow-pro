@@ -46,7 +46,7 @@ export function EntitySearchInput({
   onSelect,
 }: EntitySearchInputProps) {
   const inputId = useId();
-  const [codeQuery, setCodeQuery] = useState("");
+  const [codeQuery, setCodeQuery] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value || "");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -57,9 +57,14 @@ export function EntitySearchInput({
   const [results, setResults] = useState<EntitySearchOption[]>([]);
 
   useEffect(() => {
-    setQuery(value || "");
-    setCodeQuery(options.find(o => o.label === value)?.code || "");
-  }, [value, options]);
+    if (codeQuery === null) setQuery(value || "");
+  }, [value, codeQuery]);
+  const displayedCode = codeQuery ?? options.find(o => o.label === value)?.code ?? "";
+  const showCode = advanced && (options.some(o => o.code) || /empresa|cliente|credor/i.test(label));
+  const resolveCode = () => {
+    const match = options.find(o => o.code === displayedCode.trim());
+    if (match) pick(match);
+  };
 
   const filtered = useMemo(() => {
     const term = normalize(query);
@@ -83,7 +88,7 @@ export function EntitySearchInput({
   };
 
   const openModal = () => {
-    setMCode(codeQuery); setMName(query); setMLegal(""); setMDoc("");
+    setMCode(displayedCode); setMName(query); setMLegal(""); setMDoc("");
     setOpen(false);
     setDialogOpen(true);
     const n = normalize(query);
@@ -92,7 +97,7 @@ export function EntitySearchInput({
 
   const pick = (option: EntitySearchOption) => {
     setQuery(option.label);
-    setCodeQuery(option.code || "");
+    setCodeQuery(null);
     setOpen(false);
     setDialogOpen(false);
     onSelect(option);
@@ -100,19 +105,19 @@ export function EntitySearchInput({
 
   return (
     <div className="space-y-1.5 min-w-0">
-      <Label htmlFor={inputId}>{label}</Label>
-      <div className="flex min-w-0 gap-2">
-        {advanced && options.some(o => o.code) && <Input aria-label={`Código de ${label}`} placeholder="Cód" className="w-24 shrink-0" value={codeQuery} onChange={e => {
-          const next = e.target.value;
-          setCodeQuery(next);
-          const match = options.find(o => o.code === next);
-          if (match) pick(match);
-          else { setQuery(""); onQueryChange?.(next); }
-        }} />}
+      {!showCode && <Label htmlFor={inputId}>{label}</Label>}
+      <div className="flex min-w-0 items-end gap-2">
+        {showCode && <div className="w-20 shrink-0 space-y-1.5 sm:w-24"><Label htmlFor={`${inputId}-inline-code`}>Cód.</Label><Input id={`${inputId}-inline-code`} aria-label={`Código de ${label}`} placeholder="Cód" inputMode="numeric" value={displayedCode} onChange={e => {
+          setCodeQuery(e.target.value);
+          setQuery("");
+          onQueryChange?.("");
+          setOpen(false);
+        }} onBlur={resolveCode} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); resolveCode(); } }} /></div>}
         <div className="relative min-w-0 flex-1">
+          {showCode && <Label htmlFor={inputId} className="mb-1.5 block">Nome {label.toLowerCase()}</Label>}
           {!advanced && <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />}
           <Input id={inputId} className={advanced ? "" : "pl-9"} value={query} placeholder={placeholder}
-            onChange={event => { const nextValue = event.target.value; setQuery(nextValue); setCodeQuery(""); onQueryChange?.(nextValue); setOpen(true); }}
+            onChange={event => { const nextValue = event.target.value; setQuery(nextValue); setCodeQuery(null); onQueryChange?.(nextValue); setOpen(true); }}
             onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 200)}
             onKeyDown={e => { if (e.key === "Escape") setOpen(false); if (e.key === "Enter" && open && filtered.length === 1) { e.preventDefault(); pick(filtered[0]); } }} />
           {open && filtered.length > 0 && <div className="absolute z-50 mt-1 max-h-52 w-full overflow-auto rounded-md border border-border bg-popover shadow-lg">

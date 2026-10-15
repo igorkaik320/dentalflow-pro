@@ -2,6 +2,7 @@
 
 export interface Patient {
   id: string;
+  code?: number;
   name: string;
   cpf: string;
   birthDate: string;
@@ -34,6 +35,7 @@ export interface Procedure {
 
 export interface Supplier {
   id: string;
+  code?: number;
   name: string;
   externalId?: string;
   legalName: string;

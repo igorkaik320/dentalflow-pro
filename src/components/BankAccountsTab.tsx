@@ -24,7 +24,7 @@ const typeLabel: Record<string, string> = { corrente: "Corrente", poupanca: "Pou
 
 export function BankAccountsTab() {
   const { clinic } = useClinic();
-  const [companies, setCompanies] = useState<{ id: string; name: string; active: boolean }[]>([]);
+  const [companies, setCompanies] = useState<{ id: string; code: number; name: string; active: boolean }[]>([]);
   const [rows, setRows] = useState<Account[]>([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Account | null>(null);
@@ -34,7 +34,7 @@ export function BankAccountsTab() {
 
   const load = async () => {
     if (!clinic.id) return;
-    const companyRes = await db.from("companies").select("id,name,active").eq("clinic_id", clinic.id).order("name");
+    const companyRes = await db.from("companies").select("id,code,name,active").eq("clinic_id", clinic.id).order("name");
     if (companyRes.error) return toast.error("Não foi possível carregar as empresas.");
     setCompanies(companyRes.data || []);
     const { data, error } = await db.from("bank_accounts").select("*").eq("clinic_id", clinic.id).order("bank_name");
@@ -98,7 +98,7 @@ export function BankAccountsTab() {
     <Dialog open={open} onOpenChange={setOpen}><DialogContent className="max-w-lg">
       <DialogHeader><DialogTitle>{editing ? "Editar Conta Corrente" : "Nova Conta Corrente"}</DialogTitle></DialogHeader>
       <div className="grid grid-cols-2 gap-4">
-        <div className="col-span-2 space-y-1.5"><EntitySearchInput advanced label="Empresa *" value={companies.find(c => c.id === form.company_id)?.name || ""} options={companies.filter(c => c.active || c.id === form.company_id).map(c => ({ id: c.id, code: c.id.slice(0, 8).toUpperCase(), label: c.name }))} placeholder="Selecione a empresa" onQueryChange={() => setForm({ ...form, company_id: null })} onSelect={o => setForm({ ...form, company_id: o.id })} /></div>
+        <div className="col-span-2 space-y-1.5"><EntitySearchInput advanced label="Empresa *" value={companies.find(c => c.id === form.company_id)?.name || ""} options={companies.filter(c => c.active || c.id === form.company_id).map(c => ({ id: c.id, code: String(c.code), label: c.name }))} placeholder="Selecione a empresa" onQueryChange={() => setForm({ ...form, company_id: null })} onSelect={o => setForm({ ...form, company_id: o.id })} /></div>
         <div className="col-span-2 space-y-1.5"><Label htmlFor="account-bank">Banco *</Label><Input id="account-bank" value={form.bank_name} onChange={e => setForm({ ...form, bank_name: e.target.value })} placeholder="Ex: Itaú" /></div>
         <div className="space-y-1.5"><Label>Agência</Label><Input value={form.agency} onChange={e => setForm({ ...form, agency: e.target.value })} /></div>
         <div className="space-y-1.5"><Label htmlFor="account-number">Conta *</Label><Input id="account-number" value={form.account_number} onChange={e => setForm({ ...form, account_number: e.target.value })} /></div>

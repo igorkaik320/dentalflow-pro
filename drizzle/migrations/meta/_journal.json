@@ -64,6 +64,13 @@
       "when": 1791894991319,
       "tag": "0008_cash_shared_creditors_categories",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792083716807,
+      "tag": "0009_permanent_registration_codes",
+      "breakpoints": true
     }
   ]
 }

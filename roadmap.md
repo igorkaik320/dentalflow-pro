@@ -1,5 +1,8 @@
 # Ajustes solicitados
 
+- [ ] Numerar credores, clientes e empresas a partir de 1, com continuidade automática e códigos permanentes.
+- [ ] Padronizar campos de código, nome e lupa nas consultas e seletores e validar persistência.
+
 - [ ] Exibir apenas o cadastro selecionado no menu, sem todas as abas na tela.
 - [ ] Remover empresa duplicada em Contas a Pagar.
 - [ ] Adicionar código, nome e lupa à busca de empresa e validar seleção.

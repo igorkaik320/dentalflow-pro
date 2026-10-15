@@ -611,6 +611,7 @@ export type Database = {
           address: string | null
           clinic_id: string
           cnpj: string | null
+          code: number | null
           created_at: string
           email: string | null
           id: string
@@ -624,6 +625,7 @@ export type Database = {
           address?: string | null
           clinic_id: string
           cnpj?: string | null
+          code?: number | null
           created_at?: string
           email?: string | null
           id?: string
@@ -637,6 +639,7 @@ export type Database = {
           address?: string | null
           clinic_id?: string
           cnpj?: string | null
+          code?: number | null
           created_at?: string
           email?: string | null
           id?: string
@@ -695,6 +698,7 @@ export type Database = {
           address: string | null
           birth_date: string | null
           clinic_id: string
+          code: number | null
           cpf: string | null
           created_at: string
           email: string | null
@@ -710,6 +714,7 @@ export type Database = {
           address?: string | null
           birth_date?: string | null
           clinic_id: string
+          code?: number | null
           cpf?: string | null
           created_at?: string
           email?: string | null
@@ -725,6 +730,7 @@ export type Database = {
           address?: string | null
           birth_date?: string | null
           clinic_id?: string
+          code?: number | null
           cpf?: string | null
           created_at?: string
           email?: string | null
@@ -1224,6 +1230,32 @@ export type Database = {
           },
         ]
       }
+      registration_code_counters: {
+        Row: {
+          clinic_id: string
+          entity: string
+          last_code: number
+        }
+        Insert: {
+          clinic_id: string
+          entity: string
+          last_code?: number
+        }
+        Update: {
+          clinic_id?: string
+          entity?: string
+          last_code?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registration_code_counters_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppliers: {
         Row: {
           account: string | null
@@ -1232,6 +1264,7 @@ export type Database = {
           category: string | null
           clinic_id: string
           cnpj: string | null
+          code: number | null
           created_at: string
           document: string | null
           email: string | null
@@ -1252,6 +1285,7 @@ export type Database = {
           category?: string | null
           clinic_id: string
           cnpj?: string | null
+          code?: number | null
           created_at?: string
           document?: string | null
           email?: string | null
@@ -1272,6 +1306,7 @@ export type Database = {
           category?: string | null
           clinic_id?: string
           cnpj?: string | null
+          code?: number | null
           created_at?: string
           document?: string | null
           email?: string | null
