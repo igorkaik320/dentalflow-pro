@@ -719,40 +719,222 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
     if (exporting) return;
     const isPay = kind === "payables";
     const view = isPay ? payView : recView;
-    const applied = isPay ? payApplied : recApplied;
     setExporting(true);
     try {
-      const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
-      const doc = new jsPDF("l", "mm", "a4");
-      const title = isPay ? (view === "entries" ? "Relatório de Contas a Pagar" : "Relatório de Parcelas a Pagar") : (view === "entries" ? "Relatório de Contas a Receber" : "Relatório de Parcelas a Receber");
-      doc.setFontSize(14); doc.text(title, 14, 14);
-      doc.setFontSize(9); doc.setTextColor(100);
-      doc.text(`${clinic.name} · Período: ${applied.start ? fmtDate(applied.start) : "Início"} a ${applied.end ? fmtDate(applied.end) : "Fim"} · Gerado em ${new Date().toLocaleString("pt-BR")}`, 14, 20);
-      doc.setTextColor(0);
-      let head: string[]; let body: string[][]; let totals: { total: number; paid: number; open: number };
+      const { default: jsPDF } = await import("jspdf");
+
+      type PdfRow = { date: string; empresa: string; entidade: string; detalhe: string; parcela: string; valor: number; status: string };
+      let rows: PdfRow[];
       if (isPay && view === "entries") {
-        head = ["Credor", "Empresa", "Categoria", "Descrição", "Parcelas", "Valor", "Vencimento", "Status"];
-        body = filteredPayables.map(p => [p.supplier, companyName(p.companyId, p.companyName), p.category || "-", p.description, `${p.installments.filter(i => i.status === "paid").length}/${p.installments.length || p.installmentsCount || 1}`, formatCurrency(p.amount), fmtDate(p.dueDate), statusText[p.status] || p.status]);
-        totals = payEntryTotals;
+        rows = filteredPayables.map(p => ({ date: p.dueDate || "", empresa: companyName(p.companyId, p.companyName), entidade: p.supplier, detalhe: p.description, parcela: `${p.installments.filter(i => i.status === "paid").length}/${p.installments.length || p.installmentsCount || 1}`, valor: p.amount, status: p.status }));
       } else if (isPay) {
-        head = ["Credor", "Empresa", "Descrição", "Parcela", "Valor", "Vencimento", "Pagamento", "Status"];
-        body = payableInstallmentRows.map(r => [r.pay.supplier, companyName(r.pay.companyId, r.pay.companyName), r.pay.description, `${r.inst.installmentNumber}/${r.count}`, formatCurrency(r.inst.amount), fmtDate(r.inst.dueDate), fmtDate(r.inst.paidDate), statusText[r.inst.status] || r.inst.status]);
-        totals = payInstTotals;
+        rows = payableInstallmentRows.map(r => ({ date: r.inst.dueDate || "", empresa: companyName(r.pay.companyId, r.pay.companyName), entidade: r.pay.supplier, detalhe: r.pay.description, parcela: `${r.inst.installmentNumber}/${r.count}`, valor: r.inst.amount, status: r.inst.status }));
       } else if (view === "entries") {
-        head = ["Cliente", "Empresa", "Procedimento", "Pagamento", "Valor", "Vencimento", "Status"];
-        body = filteredReceivables.map(r => [r.patientName, companyName(r.companyId, r.companyName), r.procedure, `${r.paymentMethod}${r.installments > 1 ? ` (${r.installments}x)` : ""}`, formatCurrency(r.amount), fmtDate(r.dueDate), statusText[r.status] || r.status]);
-        totals = recEntryTotals;
+        rows = filteredReceivables.map(r => ({ date: r.dueDate || "", empresa: companyName(r.companyId, r.companyName), entidade: r.patientName, detalhe: r.procedure, parcela: r.installments > 1 ? `1/${r.installments}` : "1/1", valor: r.amount, status: r.status }));
       } else {
-        head = ["Cliente", "Empresa", "Procedimento", "Parcela", "Valor", "Vencimento", "Status"];
-        body = receivableInstallments.map(r => [r.rec.patientName, companyName(r.rec.companyId, r.rec.companyName), r.rec.procedure, `${r.number}/${r.count}`, formatCurrency(r.amount), fmtDate(r.dueDate), statusText[r.rec.status] || r.rec.status]);
-        totals = recInstTotals;
+        rows = receivableInstallments.map(r => ({ date: r.dueDate || "", empresa: companyName(r.rec.companyId, r.rec.companyName), entidade: r.rec.patientName, detalhe: r.rec.procedure, parcela: `${r.number}/${r.count}`, valor: r.amount, status: r.rec.status }));
       }
-      if (body.length === 0) { toast.error("Não há lançamentos para exportar."); return; }
-      autoTable(doc, { head: [head], body, startY: 24, styles: { fontSize: 8 }, headStyles: { fillColor: [37, 99, 235] }, columnStyles: { [head.indexOf("Valor")]: { halign: "right" } } });
-      const finalY = (doc as any).lastAutoTable?.finalY ?? 24;
-      doc.setFontSize(10);
-      doc.text(`Total: ${formatCurrency(totals.total)}   Pago: ${formatCurrency(totals.paid)}   Em aberto: ${formatCurrency(totals.open)}`, 14, finalY + 8);
-      doc.save(`${isPay ? "contas_a_pagar" : "contas_a_receber"}_${view === "entries" ? "contas" : "parcelas"}_${new Date().toISOString().slice(0, 10)}.pdf`);
+      if (rows.length === 0) { toast.error("Não há lançamentos para exportar."); return; }
+
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const marginLeft = 14;
+      const marginRight = pageWidth - 14;
+      const usableWidth = marginRight - marginLeft;
+      let y = 14;
+
+      const checkNewPage = (neededHeight: number) => {
+        if (y + neededHeight > pageHeight - 14) { pdf.addPage(); y = 14; return true; }
+        return false;
+      };
+
+      // Cabeçalho
+      pdf.setFontSize(8);
+      pdf.setTextColor(120, 120, 120);
+      pdf.text("RELATÓRIO", marginLeft, y);
+      y += 5;
+
+      pdf.setFontSize(14);
+      pdf.setTextColor(30, 30, 30);
+      pdf.setFont("helvetica", "bold");
+      pdf.text(isPay ? "CONTAS A PAGAR" : "CONTAS A RECEBER", pageWidth / 2, y, { align: "center" });
+      if (clinic.name) {
+        y += 5;
+        pdf.setFontSize(10);
+        pdf.text(pdf.splitTextToSize(clinic.name, usableWidth - 45), pageWidth / 2, y, { align: "center" });
+      }
+
+      pdf.setFontSize(8);
+      pdf.setTextColor(120, 120, 120);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(`Gerado em: ${new Date().toLocaleDateString("pt-BR")}`, marginRight, y, { align: "right" });
+      y += clinic.name ? 4 : 3;
+
+      pdf.setDrawColor(200, 200, 200);
+      pdf.line(marginLeft, y, marginRight, y);
+      y += 5;
+
+      // Colunas da tabela
+      const cols = {
+        venc:     { x: marginLeft,       w: 18 },
+        empresa:  { x: marginLeft + 18,  w: 30 },
+        entidade: { x: marginLeft + 48,  w: 45 },
+        detalhe:  { x: marginLeft + 93,  w: 37 },
+        parcela:  { x: marginLeft + 130, w: 14 },
+        valor:    { x: marginLeft + 144, w: 22 },
+        status:   { x: marginLeft + 166, w: 16 },
+      };
+
+      const wrapPdfText = (value: unknown, width: number, maxLines: number) => {
+        const text = String(value || "-").trim() || "-";
+        const lines = pdf.splitTextToSize(text, width).slice(0, maxLines);
+        if (lines.length === maxLines && pdf.splitTextToSize(text, width).length > maxLines) {
+          const last = String(lines[lines.length - 1]);
+          lines[lines.length - 1] = last.length > 3 ? `${last.slice(0, -3)}...` : last;
+        }
+        return lines.length ? lines : ["-"];
+      };
+
+      const drawPdfBadge = (text: string, x: number, width: number, fill: [number, number, number], color: [number, number, number], baselineY: number, fontSize = 6) => {
+        pdf.setFillColor(...fill);
+        pdf.roundedRect(x, baselineY - 2.9, width, 4.2, 0.8, 0.8, "F");
+        pdf.setTextColor(...color);
+        pdf.setFontSize(fontSize);
+        pdf.setFont("helvetica", "bold");
+        pdf.text(text, x + width / 2, baselineY - 0.7, { align: "center" });
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(7.5);
+        pdf.setTextColor(50, 50, 50);
+      };
+
+      const entidadeLabel = isPay ? "Credor" : "Cliente";
+      const detalheLabel = isPay ? "Descrição" : "Procedimento";
+      const drawTableHeader = () => {
+        pdf.setFillColor(245, 245, 245);
+        pdf.rect(marginLeft, y - 4, usableWidth, 7, "F");
+        pdf.setFontSize(7.5);
+        pdf.setFont("helvetica", "bold");
+        pdf.setTextColor(80, 80, 80);
+        pdf.text("Vencimento", cols.venc.x, y);
+        pdf.text("Empresa", cols.empresa.x, y);
+        pdf.text(entidadeLabel, cols.entidade.x, y);
+        pdf.text(detalheLabel, cols.detalhe.x, y);
+        pdf.text("Parcela", cols.parcela.x + cols.parcela.w / 2, y, { align: "center" });
+        pdf.text("Valor", cols.valor.x + cols.valor.w, y, { align: "right" });
+        pdf.text("Status", cols.status.x + cols.status.w / 2, y, { align: "center" });
+        pdf.setDrawColor(210, 210, 210);
+        pdf.line(marginLeft, y + 2, marginRight, y + 2);
+        y += 6;
+      };
+
+      drawTableHeader();
+
+      // Grupos por data de vencimento
+      const groups = new Map<string, PdfRow[]>();
+      for (const row of rows) {
+        const key = row.date || "sem-data";
+        const list = groups.get(key) || [];
+        list.push(row);
+        groups.set(key, list);
+      }
+      const sortedGroups = Array.from(groups.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+      const grandTotal = rows.reduce((sum, r) => sum + r.valor, 0);
+
+      const statusFill: Record<string, [number, number, number]> = {
+        open: [220, 237, 255], paid: [220, 250, 230], overdue: [255, 225, 225], cancelled: [235, 235, 235],
+      };
+      const statusColor: Record<string, [number, number, number]> = {
+        open: [30, 100, 200], paid: [30, 150, 60], overdue: [200, 50, 50], cancelled: [100, 100, 100],
+      };
+
+      for (const [dateKey, items] of sortedGroups) {
+        checkNewPage(14);
+        pdf.setFillColor(248, 249, 250);
+        pdf.rect(marginLeft, y - 3.5, usableWidth, 10, "F");
+
+        const dateLabel = dateKey === "sem-data"
+          ? "Sem vencimento"
+          : new Date(`${dateKey}T00:00:00`).toLocaleDateString("pt-BR", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+
+        pdf.setFontSize(8.5);
+        pdf.setFont("helvetica", "bold");
+        pdf.setTextColor(30, 30, 30);
+        pdf.text(dateLabel, marginLeft + 1, y + 2);
+
+        pdf.setFontSize(7);
+        pdf.setFont("helvetica", "normal");
+        pdf.setTextColor(100, 100, 100);
+        pdf.text(`${items.length} lançamento${items.length === 1 ? "" : "s"}`, marginLeft + 1, y + 6);
+        y += 10;
+
+        items.forEach((item, idx) => {
+          pdf.setFontSize(7);
+          const empresaLines = wrapPdfText(item.empresa, cols.empresa.w - 2, 3);
+          const entidadeLines = wrapPdfText(item.entidade, cols.entidade.w - 2, 3);
+          pdf.setFontSize(6.4);
+          const detalheLines = wrapPdfText(item.detalhe, cols.detalhe.w - 1, 4);
+          const maxLines = Math.max(empresaLines.length, entidadeLines.length, detalheLines.length);
+          const rowHeight = Math.max(7, maxLines * 3.2 + 3.2);
+          if (checkNewPage(rowHeight)) drawTableHeader();
+
+          pdf.setFillColor(idx % 2 === 0 ? 255 : 252, idx % 2 === 0 ? 255 : 252, idx % 2 === 0 ? 255 : 252);
+          pdf.rect(marginLeft, y - 3.5, usableWidth, rowHeight - 0.5, "F");
+
+          pdf.setFontSize(7);
+          pdf.setFont("helvetica", "normal");
+          pdf.setTextColor(50, 50, 50);
+
+          pdf.text(item.date ? fmtDate(item.date) : "-", cols.venc.x, y);
+          pdf.text(empresaLines, cols.empresa.x, y);
+          pdf.text(entidadeLines, cols.entidade.x, y);
+
+          pdf.setFontSize(6.4);
+          pdf.setTextColor(80, 80, 80);
+          pdf.text(detalheLines, cols.detalhe.x, y);
+          pdf.setFontSize(7);
+          pdf.setTextColor(50, 50, 50);
+
+          pdf.text(item.parcela, cols.parcela.x + cols.parcela.w / 2, y, { align: "center" });
+          pdf.text(formatCurrency(item.valor), cols.valor.x + cols.valor.w, y, { align: "right" });
+
+          const statusLabelText = (statusText[item.status] || item.status || "-").toUpperCase().substring(0, 8);
+          drawPdfBadge(statusLabelText, cols.status.x, cols.status.w, statusFill[item.status] ?? [235, 235, 235], statusColor[item.status] ?? [80, 80, 80], y);
+
+          pdf.setDrawColor(240, 240, 240);
+          pdf.line(marginLeft, y + rowHeight - 4.5, marginRight, y + rowHeight - 4.5);
+          y += rowHeight;
+        });
+
+        checkNewPage(8);
+        const dayTotal = items.reduce((sum, r) => sum + r.valor, 0);
+        pdf.setFillColor(248, 249, 250);
+        pdf.rect(marginLeft, y - 3.5, usableWidth, 7, "F");
+        pdf.setFontSize(8);
+        pdf.setFont("helvetica", "bold");
+        pdf.setTextColor(30, 30, 30);
+        pdf.text("TOTAL DO DIA", cols.entidade.x, y);
+        pdf.text(formatCurrency(dayTotal), cols.valor.x + cols.valor.w, y, { align: "right" });
+        pdf.setDrawColor(225, 225, 225);
+        pdf.line(marginLeft, y + 2.5, marginRight, y + 2.5);
+        y += 9;
+      }
+
+      // Total geral
+      checkNewPage(12);
+      y += 2;
+      pdf.setDrawColor(40, 40, 40);
+      pdf.setLineWidth(0.5);
+      pdf.line(marginLeft, y, marginRight, y);
+      y += 5;
+      pdf.setFontSize(10);
+      pdf.setFont("helvetica", "bold");
+      pdf.setTextColor(30, 30, 30);
+      pdf.text("TOTAL GERAL", marginLeft, y);
+      pdf.text(formatCurrency(grandTotal), marginRight, y, { align: "right" });
+      pdf.setLineWidth(0.2);
+
+      pdf.save(`${isPay ? "contas_a_pagar" : "contas_a_receber"}_${view === "entries" ? "contas" : "parcelas"}_${new Date().toISOString().slice(0, 10)}.pdf`);
       toast.success("PDF gerado com sucesso.");
     } catch (e: any) {
       toast.error(e?.message || "Não foi possível gerar o PDF.");
