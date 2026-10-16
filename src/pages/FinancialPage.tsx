@@ -15,7 +15,7 @@ import { db } from "@/lib/clinicCloud";
 import { formatCurrency, parseCurrencyInput, onlyDigits } from "@/lib/utils";
 import type { FinancialCategory, Payable, PayableInstallment, Professional, Receivable, Supplier } from "@/data/mockData";
 import { toast } from "sonner";
-import { DollarSign, Plus, Edit2, Trash2, CalendarDays, CheckCircle2, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { DollarSign, Plus, Edit2, Trash2, CalendarDays, CheckCircle2, ArrowUp, ArrowDown, ArrowUpDown, FileDown } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FinanceFilterPanel, emptyFinanceFilters, type FinanceFilters } from "@/components/FinanceFilterPanel";
 import { TablePagination, usePagination } from "@/components/TablePagination";
