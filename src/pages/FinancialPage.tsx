@@ -713,6 +713,55 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
   const selectionBar = (count: number, onClear: () => void) => count > 0 && <div className="flex items-center gap-2"><span className="text-xs text-muted-foreground">{count} selecionado(s)</span><Button size="sm" variant="outline" onClick={onClear}>Limpar</Button><Button size="sm" onClick={() => { setSettleDate(today()); setSettleOpen(true); }}><CheckCircle2 className="mr-1 h-4 w-4" />Baixar</Button></div>;
   const fmtDate = (d?: string) => d ? new Date(d + "T12:00:00").toLocaleDateString("pt-BR") : "-";
 
+  const [exporting, setExporting] = useState(false);
+  const statusText: Record<string, string> = { open: "Aberto", paid: "Pago", overdue: "Atrasado", cancelled: "Cancelado" };
+  const exportPdf = async (kind: "payables" | "receivables") => {
+    if (exporting) return;
+    const isPay = kind === "payables";
+    const view = isPay ? payView : recView;
+    const applied = isPay ? payApplied : recApplied;
+    setExporting(true);
+    try {
+      const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
+      const doc = new jsPDF("l", "mm", "a4");
+      const title = isPay ? (view === "entries" ? "Relatório de Contas a Pagar" : "Relatório de Parcelas a Pagar") : (view === "entries" ? "Relatório de Contas a Receber" : "Relatório de Parcelas a Receber");
+      doc.setFontSize(14); doc.text(title, 14, 14);
+      doc.setFontSize(9); doc.setTextColor(100);
+      doc.text(`${clinic.name} · Período: ${applied.start ? fmtDate(applied.start) : "Início"} a ${applied.end ? fmtDate(applied.end) : "Fim"} · Gerado em ${new Date().toLocaleString("pt-BR")}`, 14, 20);
+      doc.setTextColor(0);
+      let head: string[]; let body: string[][]; let totals: { total: number; paid: number; open: number };
+      if (isPay && view === "entries") {
+        head = ["Credor", "Empresa", "Categoria", "Descrição", "Parcelas", "Valor", "Vencimento", "Status"];
+        body = filteredPayables.map(p => [p.supplier, companyName(p.companyId, p.companyName), p.category || "-", p.description, `${p.installments.filter(i => i.status === "paid").length}/${p.installments.length || p.installmentsCount || 1}`, formatCurrency(p.amount), fmtDate(p.dueDate), statusText[p.status] || p.status]);
+        totals = payEntryTotals;
+      } else if (isPay) {
+        head = ["Credor", "Empresa", "Descrição", "Parcela", "Valor", "Vencimento", "Pagamento", "Status"];
+        body = payableInstallmentRows.map(r => [r.pay.supplier, companyName(r.pay.companyId, r.pay.companyName), r.pay.description, `${r.inst.installmentNumber}/${r.count}`, formatCurrency(r.inst.amount), fmtDate(r.inst.dueDate), fmtDate(r.inst.paidDate), statusText[r.inst.status] || r.inst.status]);
+        totals = payInstTotals;
+      } else if (view === "entries") {
+        head = ["Cliente", "Empresa", "Procedimento", "Pagamento", "Valor", "Vencimento", "Status"];
+        body = filteredReceivables.map(r => [r.patientName, companyName(r.companyId, r.companyName), r.procedure, `${r.paymentMethod}${r.installments > 1 ? ` (${r.installments}x)` : ""}`, formatCurrency(r.amount), fmtDate(r.dueDate), statusText[r.status] || r.status]);
+        totals = recEntryTotals;
+      } else {
+        head = ["Cliente", "Empresa", "Procedimento", "Parcela", "Valor", "Vencimento", "Status"];
+        body = receivableInstallments.map(r => [r.rec.patientName, companyName(r.rec.companyId, r.rec.companyName), r.rec.procedure, `${r.number}/${r.count}`, formatCurrency(r.amount), fmtDate(r.dueDate), statusText[r.rec.status] || r.rec.status]);
+        totals = recInstTotals;
+      }
+      if (body.length === 0) { toast.error("Não há lançamentos para exportar."); return; }
+      autoTable(doc, { head: [head], body, startY: 24, styles: { fontSize: 8 }, headStyles: { fillColor: [37, 99, 235] }, columnStyles: { [head.indexOf("Valor")]: { halign: "right" } } });
+      const finalY = (doc as any).lastAutoTable?.finalY ?? 24;
+      doc.setFontSize(10);
+      doc.text(`Total: ${formatCurrency(totals.total)}   Pago: ${formatCurrency(totals.paid)}   Em aberto: ${formatCurrency(totals.open)}`, 14, finalY + 8);
+      doc.save(`${isPay ? "contas_a_pagar" : "contas_a_receber"}_${view === "entries" ? "contas" : "parcelas"}_${new Date().toISOString().slice(0, 10)}.pdf`);
+      toast.success("PDF gerado com sucesso.");
+    } catch (e: any) {
+      toast.error(e?.message || "Não foi possível gerar o PDF.");
+    } finally {
+      setExporting(false);
+    }
+  };
+  const pdfButton = (kind: "payables" | "receivables") => <Button size="sm" variant="outline" onClick={() => exportPdf(kind)} disabled={exporting}><FileDown className="mr-1 h-4 w-4" />{exporting ? "Gerando..." : "Relatório PDF"}</Button>;
+
   return (
     <ClinicLayout title={section === "receivables" ? "Contas a Receber" : section === "payables" ? "Contas a Pagar" : "Controle de Caixa"} subtitle={section === "payables" ? "Gerenciamento de contas a pagar e parcelas" : section === "receivables" ? "Gerenciamento de contas a receber e parcelas" : "Financeiro · Virtuosa"}>
       <div className="animate-fade-in">
