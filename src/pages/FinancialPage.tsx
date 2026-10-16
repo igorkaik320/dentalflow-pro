@@ -772,7 +772,7 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
             <Tabs value={payView} onValueChange={v => setPayView(v as "entries" | "installments")} className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <TabsList><TabsTrigger value="entries" className="px-4">Contas</TabsTrigger><TabsTrigger value="installments" className="px-4">Parcelas</TabsTrigger></TabsList>
-                <div className="flex flex-wrap items-center gap-2">{selectionBar(selectedPay.length, () => setSelectedPay([]))}<Button size="sm" onClick={() => openPay()}><Plus className="mr-1 h-4 w-4" />Novo</Button></div>
+                <div className="flex flex-wrap items-center gap-2">{selectionBar(selectedPay.length, () => setSelectedPay([]))}{pdfButton("payables")}<Button size="sm" onClick={() => openPay()}><Plus className="mr-1 h-4 w-4" />Novo</Button></div>
               </div>
               <TabsContent value="entries" className="mt-0">
                 <ResultsCard title="Contas a Pagar" count={filteredPayables.length} totals={payEntryTotals}>
@@ -820,7 +820,7 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
             <Tabs value={recView} onValueChange={v => setRecView(v as "entries" | "installments")} className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <TabsList><TabsTrigger value="entries" className="px-4">Contas</TabsTrigger><TabsTrigger value="installments" className="px-4">Parcelas</TabsTrigger></TabsList>
-                <div className="flex flex-wrap items-center gap-2">{selectionBar(selectedRec.length, () => setSelectedRec([]))}<Button size="sm" onClick={() => openRec()}><Plus className="mr-1 h-4 w-4" />Novo</Button></div>
+                <div className="flex flex-wrap items-center gap-2">{selectionBar(selectedRec.length, () => setSelectedRec([]))}{pdfButton("receivables")}<Button size="sm" onClick={() => openRec()}><Plus className="mr-1 h-4 w-4" />Novo</Button></div>
               </div>
               <TabsContent value="entries" className="mt-0">
                 <ResultsCard title="Contas a Receber" count={filteredReceivables.length} totals={recEntryTotals}>
