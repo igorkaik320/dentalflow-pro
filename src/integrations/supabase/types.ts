@@ -1256,6 +1256,60 @@ export type Database = {
           },
         ]
       }
+      sectors: {
+        Row: {
+          active: boolean
+          clinic_id: string
+          created_at: string
+          goal_amount: number
+          goal_period: string
+          id: string
+          name: string
+          notes: string | null
+          responsible_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          clinic_id: string
+          created_at?: string
+          goal_amount?: number
+          goal_period?: string
+          id?: string
+          name: string
+          notes?: string | null
+          responsible_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          clinic_id?: string
+          created_at?: string
+          goal_amount?: number
+          goal_period?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          responsible_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sectors_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sectors_responsible_id_fkey"
+            columns: ["responsible_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppliers: {
         Row: {
           account: string | null
@@ -1265,17 +1319,22 @@ export type Database = {
           clinic_id: string
           cnpj: string | null
           code: number | null
+          commission_rate: number | null
           created_at: string
           document: string | null
           email: string | null
           external_id: string | null
           id: string
+          individual_goal: number | null
           is_collaborator: boolean
+          job_title: string | null
           legal_name: string | null
           mobile: string | null
           name: string
           notes: string | null
           phone: string | null
+          pix_key: string | null
+          sector_id: string | null
           updated_at: string
         }
         Insert: {
@@ -1286,17 +1345,22 @@ export type Database = {
           clinic_id: string
           cnpj?: string | null
           code?: number | null
+          commission_rate?: number | null
           created_at?: string
           document?: string | null
           email?: string | null
           external_id?: string | null
           id?: string
+          individual_goal?: number | null
           is_collaborator?: boolean
+          job_title?: string | null
           legal_name?: string | null
           mobile?: string | null
           name: string
           notes?: string | null
           phone?: string | null
+          pix_key?: string | null
+          sector_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -1307,17 +1371,22 @@ export type Database = {
           clinic_id?: string
           cnpj?: string | null
           code?: number | null
+          commission_rate?: number | null
           created_at?: string
           document?: string | null
           email?: string | null
           external_id?: string | null
           id?: string
+          individual_goal?: number | null
           is_collaborator?: boolean
+          job_title?: string | null
           legal_name?: string | null
           mobile?: string | null
           name?: string
           notes?: string | null
           phone?: string | null
+          pix_key?: string | null
+          sector_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1326,6 +1395,13 @@ export type Database = {
             columns: ["clinic_id"]
             isOneToOne: false
             referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "suppliers_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
             referencedColumns: ["id"]
           },
         ]

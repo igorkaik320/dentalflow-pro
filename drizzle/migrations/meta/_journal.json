@@ -71,6 +71,13 @@
       "when": 1792083716807,
       "tag": "0009_permanent_registration_codes",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792414662157,
+      "tag": "0010_create_sectors_commission",
+      "breakpoints": true
     }
   ]
 }

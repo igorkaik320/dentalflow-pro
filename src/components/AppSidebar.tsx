@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LayoutDashboard, CircleDollarSign, ClipboardList, Lock, Boxes, ShieldCheck, ChevronLeft, ChevronRight, User, Building2, Stethoscope, Tag, Landmark, ArrowUpCircle, ArrowDownCircle, Wallet } from "lucide-react";
+import { LayoutDashboard, CircleDollarSign, ClipboardList, Lock, Boxes, ShieldCheck, ChevronLeft, ChevronRight, User, Building2, Stethoscope, Tag, Landmark, ArrowUpCircle, ArrowDownCircle, Wallet, Users } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useClinic } from "@/contexts/ClinicContext";
@@ -27,6 +27,7 @@ const groups: { key: string; label: string; icon: typeof User; items: MenuItem[]
     { title: "Credores", url: "/cadastros?tab=suppliers", icon: Building2, module: "registrations" },
     { title: "Categorias", url: "/cadastros?tab=categories", icon: Tag, module: "registrations" },
     { title: "Contas Correntes", url: "/cadastros?tab=accounts", icon: Landmark, module: "registrations" },
+    { title: "Setores", url: "/cadastros?tab=sectors", icon: Users, module: "registrations" },
   ] },
   { key: "security", label: "Segurança", icon: Lock, items: [
     { title: "Usuários e permissões", url: "/seguranca", icon: Lock, module: "security" },
