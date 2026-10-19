@@ -911,6 +911,7 @@ export type Database = {
           amount: number
           category: string | null
           clinic_id: string
+          commission_period: string | null
           company_id: string | null
           company_name: string | null
           created_at: string
@@ -932,6 +933,7 @@ export type Database = {
           amount?: number
           category?: string | null
           clinic_id: string
+          commission_period?: string | null
           company_id?: string | null
           company_name?: string | null
           created_at?: string
@@ -953,6 +955,7 @@ export type Database = {
           amount?: number
           category?: string | null
           clinic_id?: string
+          commission_period?: string | null
           company_id?: string | null
           company_name?: string | null
           created_at?: string
@@ -991,6 +994,8 @@ export type Database = {
         Row: {
           active: boolean
           average_duration: number
+          bonus_type: string
+          bonus_value: number
           clinic_id: string
           company_id: string | null
           created_at: string
@@ -1002,6 +1007,8 @@ export type Database = {
         Insert: {
           active?: boolean
           average_duration?: number
+          bonus_type?: string
+          bonus_value?: number
           clinic_id: string
           company_id?: string | null
           created_at?: string
@@ -1013,6 +1020,8 @@ export type Database = {
         Update: {
           active?: boolean
           average_duration?: number
+          bonus_type?: string
+          bonus_value?: number
           clinic_id?: string
           company_id?: string | null
           created_at?: string
@@ -1128,6 +1137,7 @@ export type Database = {
           company_name: string | null
           created_at: string
           due_date: string
+          executor_id: string | null
           id: string
           installments: number
           paid_date: string | null
@@ -1138,6 +1148,7 @@ export type Database = {
           procedure_name: string
           professional_id: string | null
           professional_name: string | null
+          seller_id: string | null
           status: string
           updated_at: string
         }
@@ -1150,6 +1161,7 @@ export type Database = {
           company_name?: string | null
           created_at?: string
           due_date: string
+          executor_id?: string | null
           id?: string
           installments?: number
           paid_date?: string | null
@@ -1160,6 +1172,7 @@ export type Database = {
           procedure_name: string
           professional_id?: string | null
           professional_name?: string | null
+          seller_id?: string | null
           status?: string
           updated_at?: string
         }
@@ -1172,6 +1185,7 @@ export type Database = {
           company_name?: string | null
           created_at?: string
           due_date?: string
+          executor_id?: string | null
           id?: string
           installments?: number
           paid_date?: string | null
@@ -1182,6 +1196,7 @@ export type Database = {
           procedure_name?: string
           professional_id?: string | null
           professional_name?: string | null
+          seller_id?: string | null
           status?: string
           updated_at?: string
         }
@@ -1208,6 +1223,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "receivables_executor_id_fkey"
+            columns: ["executor_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "receivables_patient_id_fkey"
             columns: ["patient_id"]
             isOneToOne: false
@@ -1226,6 +1248,13 @@ export type Database = {
             columns: ["professional_id"]
             isOneToOne: false
             referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receivables_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
         ]
