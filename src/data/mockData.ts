@@ -75,6 +75,12 @@ export interface Appointment {
 }
 
 export interface Receivable {
+  sellerId?: string | null;
+  executorId?: string | null;
+  procedureId?: string | null;
+  quantity?: number;
+  saleDate?: string;
+  executionDate?: string | null;
   id: string;
   patientId: string;
   patientName: string;
