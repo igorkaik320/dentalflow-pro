@@ -11,6 +11,7 @@ import type { PermissionModule } from "@/lib/permissions";
 import DashboardPage from "./pages/DashboardPage";
 import AuditPage from "./pages/AuditPage";
 import FinancialPage from "./pages/FinancialPage";
+import CommissionsPage from "./pages/CommissionsPage";
 import PatrimonyPage from "./pages/PatrimonyPage";
 import SecurityPage from "./pages/SecurityPage";
 import RegistrationsPage from "./pages/RegistrationsPage";
@@ -55,6 +56,7 @@ const App = () => (
               <Route path="/financeiro/receber" element={<AccessGuard module="financial"><FinancialPage section="receivables" /></AccessGuard>} />
               <Route path="/financeiro/pagar" element={<AccessGuard module="financial"><FinancialPage section="payables" /></AccessGuard>} />
               <Route path="/financeiro/caixa" element={<AccessGuard module="financial"><FinancialPage section="cashflow" /></AccessGuard>} />
+              <Route path="/financeiro/comissoes" element={<AccessGuard module="financial"><CommissionsPage /></AccessGuard>} />
               <Route path="/auditoria" element={<AuditPage />} />
               <Route path="/patrimonio" element={<AccessGuard module="patrimony"><PatrimonyPage /></AccessGuard>} />
               <Route path="/seguranca" element={<AccessGuard module="security"><SecurityPage /></AccessGuard>} />
