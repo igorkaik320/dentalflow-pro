@@ -85,6 +85,13 @@
       "when": 1792414831401,
       "tag": "0011_commission_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792585281035,
+      "tag": "0012_commission_calculation_and_payables",
+      "breakpoints": true
     }
   ]
 }

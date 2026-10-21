@@ -1137,6 +1137,7 @@ export type Database = {
           company_name: string | null
           created_at: string
           due_date: string
+          execution_date: string | null
           executor_id: string | null
           id: string
           installments: number
@@ -1145,9 +1146,12 @@ export type Database = {
           patient_name: string
           payment_company_id: string | null
           payment_method: string | null
+          procedure_id: string | null
           procedure_name: string
           professional_id: string | null
           professional_name: string | null
+          quantity: number
+          sale_date: string
           seller_id: string | null
           status: string
           updated_at: string
@@ -1161,6 +1165,7 @@ export type Database = {
           company_name?: string | null
           created_at?: string
           due_date: string
+          execution_date?: string | null
           executor_id?: string | null
           id?: string
           installments?: number
@@ -1169,9 +1174,12 @@ export type Database = {
           patient_name: string
           payment_company_id?: string | null
           payment_method?: string | null
+          procedure_id?: string | null
           procedure_name: string
           professional_id?: string | null
           professional_name?: string | null
+          quantity?: number
+          sale_date?: string
           seller_id?: string | null
           status?: string
           updated_at?: string
@@ -1185,6 +1193,7 @@ export type Database = {
           company_name?: string | null
           created_at?: string
           due_date?: string
+          execution_date?: string | null
           executor_id?: string | null
           id?: string
           installments?: number
@@ -1193,9 +1202,12 @@ export type Database = {
           patient_name?: string
           payment_company_id?: string | null
           payment_method?: string | null
+          procedure_id?: string | null
           procedure_name?: string
           professional_id?: string | null
           professional_name?: string | null
+          quantity?: number
+          sale_date?: string
           seller_id?: string | null
           status?: string
           updated_at?: string
@@ -1241,6 +1253,13 @@ export type Database = {
             columns: ["payment_company_id"]
             isOneToOne: false
             referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receivables_procedure_id_fkey"
+            columns: ["procedure_id"]
+            isOneToOne: false
+            referencedRelation: "procedures"
             referencedColumns: ["id"]
           },
           {
@@ -1454,6 +1473,21 @@ export type Database = {
           user_id: string
         }[]
       }
+      commission_access: {
+        Args: { _action: string; _clinic: string }
+        Returns: boolean
+      }
+      generate_commission_payables: {
+        Args: {
+          _basis: string
+          _category: string
+          _clinic: string
+          _company: string
+          _due: string
+          _month: string
+        }
+        Returns: number
+      }
       has_clinic_role: {
         Args: {
           _clinic_id: string
@@ -1462,6 +1496,15 @@ export type Database = {
         Returns: boolean
       }
       is_clinic_member: { Args: { _clinic_id: string }; Returns: boolean }
+      preview_commissions: {
+        Args: {
+          _basis?: string
+          _clinic: string
+          _company: string
+          _month: string
+        }
+        Returns: Json
+      }
       set_clinic_member_permission: {
         Args: {
           _can_create: boolean
