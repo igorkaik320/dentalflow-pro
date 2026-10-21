@@ -1,5 +1,11 @@
 # Ajustes solicitados
 
+## Controle de comissões
+- [ ] Corrigir lista de vendedores e executores e validar cadastros existentes.
+- [ ] Apurar vendas, metas e bonificações por mês e empresa.
+- [ ] Gerar contas a pagar auditadas sem duplicar a apuração.
+- [ ] Testar cálculos e fluxo completo com persistência.
+
 - [ ] Numerar credores, clientes e empresas a partir de 1, com continuidade automática e códigos permanentes.
 - [ ] Padronizar campos de código, nome e lupa nas consultas e seletores e validar persistência.
 
