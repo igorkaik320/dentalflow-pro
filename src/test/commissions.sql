@@ -28,6 +28,10 @@ BEGIN
  result:=public.preview_commissions(clinic,company,'2026-11-01','received');
  SELECT value INTO row FROM jsonb_array_elements(result) WHERE value->>'id'=person::text;
  IF (row->>'commission')::numeric<>100 OR (row->>'bonus')::numeric<>0 THEN RAISE EXCEPTION 'Receipt and execution dates must be independent'; END IF;
+ INSERT INTO public.commission_adjustments(clinic_id,company_id,supplier_id,period,kind,amount) VALUES(clinic,company,person,'2026-10','bonus',30),(clinic,company,person,'2026-10','advance',20);
+ result:=public.preview_commissions(clinic,company,'2026-10-01','sales');
+ SELECT value INTO row FROM jsonb_array_elements(result) WHERE value->>'id'=person::text;
+ IF (row->>'total')::numeric<>160 THEN RAISE EXCEPTION 'Manual bonus adds and advance subtracts: expected 160, got %',row->>'total'; END IF;
  generated:=public.generate_commission_payables(clinic,company,'2026-10-01','sales','2026-11-05',category);
  IF generated<>1 THEN RAISE EXCEPTION 'Expected one payable'; END IF;
  generated:=public.generate_commission_payables(clinic,company,'2026-10-01','received','2026-11-05',category);
