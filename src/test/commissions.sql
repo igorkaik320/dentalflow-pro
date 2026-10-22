@@ -16,7 +16,7 @@ BEGIN
  IF (row->>'sold')::numeric<>1000 OR (row->>'sold_quantity')::integer<>3 THEN RAISE EXCEPTION 'Sale amount/quantity mismatch'; END IF;
  IF (row->>'commission')::numeric<>100 THEN RAISE EXCEPTION '10 percent commission must be 100'; END IF;
  IF (row->>'bonus')::numeric<>60 THEN RAISE EXCEPTION 'Fixed bonus must be 20 times 3'; END IF;
- UPDATE public.procedures SET bonus_type='percentage',bonus_value=5 WHERE id=proc;
+ UPDATE public.procedures SET bonus_type='percent',bonus_value=5 WHERE id=proc;
  result:=public.preview_commissions(clinic,company,'2026-10-01','sales');
  SELECT value INTO row FROM jsonb_array_elements(result) WHERE value->>'id'=person::text;
  IF (row->>'bonus')::numeric<>50 THEN RAISE EXCEPTION 'Percentage bonus must not multiply total by quantity'; END IF;
