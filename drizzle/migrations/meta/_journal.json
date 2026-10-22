@@ -92,6 +92,20 @@
       "when": 1792585281035,
       "tag": "0012_commission_calculation_and_payables",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792671147223,
+      "tag": "0013_commission_adjustments",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792671269461,
+      "tag": "0014_fix_preview_commissions_period",
+      "breakpoints": true
     }
   ]
 }
