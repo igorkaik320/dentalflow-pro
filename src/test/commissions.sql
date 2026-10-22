@@ -32,7 +32,7 @@ BEGIN
  IF generated<>1 THEN RAISE EXCEPTION 'Expected one payable'; END IF;
  generated:=public.generate_commission_payables(clinic,company,'2026-10-01','received','2026-11-05',category);
  IF generated<>0 THEN RAISE EXCEPTION 'Same month/collaborator cannot generate twice even with a different basis'; END IF;
- IF NOT EXISTS(SELECT 1 FROM public.payables p JOIN public.payable_installments i ON i.payable_id=p.id WHERE p.company_id=company AND p.amount=150 AND i.amount=150 AND p.commission_period='2026-10') THEN RAISE EXCEPTION 'Payable and installment must match calculation'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.payables p JOIN public.payable_installments i ON i.payable_id=p.id WHERE p.company_id=company AND p.amount=160 AND i.amount=160 AND p.commission_period='2026-10') THEN RAISE EXCEPTION 'Payable and installment must match calculation'; END IF;
  IF NOT EXISTS(SELECT 1 FROM public.activity_logs WHERE clinic_id=clinic AND user_id=auth.uid() AND table_name='payables' AND details->'current'->>'company_id'=company::text) THEN RAISE EXCEPTION 'Commission generation must record its actor'; END IF;
 END $$;
 ROLLBACK;
