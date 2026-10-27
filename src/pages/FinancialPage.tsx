@@ -91,9 +91,10 @@ const statusBadge: Record<string, string> = {
   open: "bg-primary/15 text-primary",
   paid: "bg-success/15 text-success",
   overdue: "bg-destructive/15 text-destructive",
+  partial: "bg-warning/15 text-warning",
 };
 const statusLabel: Record<string, string> = {
-  open: "Aberto", paid: "Pago", overdue: "Atrasado",
+  open: "Aberto", paid: "Pago", overdue: "Atrasado", partial: "Parcial",
 };
 
 function addMonths(dateText: string, months: number) {
@@ -282,6 +283,7 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
   const [bankAccounts, setBankAccounts] = useState<BankAccountRow[]>([]);
   const [selectedRec, setSelectedRec] = useState<string[]>([]);
   const [selectedPay, setSelectedPay] = useState<string[]>([]);
+  const [selectedPayInst, setSelectedPayInst] = useState<string[]>([]);
   const [settleOpen, setSettleOpen] = useState(false);
   const [settleAccount, setSettleAccount] = useState("");
   const [settleDate, setSettleDate] = useState(today());
@@ -446,7 +448,9 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
     if (!settleAccount) return toast.error("Selecione a conta corrente.");
     if (!settleDate) return toast.error("Informe a data da baixa.");
     const account = bankAccounts.find(a => a.id === settleAccount && a.active);
-    const targets = section === "receivables" ? receivables.filter(r => selectedRec.includes(r.id)) : payables.filter(p => selectedPay.includes(p.id));
+    const byInstallment = section !== "receivables" && payView === "installments";
+    const targets = section === "receivables" ? receivables.filter(r => selectedRec.includes(r.id)) : byInstallment ? payables.filter(p => p.installments.some(i => selectedPayInst.includes(i.id))) : payables.filter(p => selectedPay.includes(p.id));
+    if (!targets.length) return toast.error("Selecione ao menos um lançamento.");
     if (!account?.companyId || targets.some(t => t.companyId !== account.companyId)) return toast.error("Selecione lançamentos e conta da mesma empresa.");
     if (settleDate < account.initialDate) return toast.error("A baixa não pode ser anterior à data inicial da conta.");
     setSettling(true);
@@ -459,16 +463,21 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
         toast.success(`${ids.length} lancamento(s) baixado(s).`);
         setSelectedRec([]);
       } else {
-        const targets = payables.filter((p) => selectedPay.includes(p.id));
-        const installmentIds = targets.flatMap((p) => p.installments.filter((i) => i.status !== "paid").map((i) => i.id));
-        for (const inst of targets.flatMap((p) => p.installments.filter((i) => i.status !== "paid"))) {
+        const toPay = targets.flatMap((p) => p.installments.filter((i) => i.status !== "paid" && (!byInstallment || selectedPayInst.includes(i.id))));
+        if (!toPay.length) { toast.error("As parcelas selecionadas ja estao baixadas."); return; }
+        for (const inst of toPay) {
           const { error } = await db.from("payable_installments").update({ status: "paid", paid_date: settleDate, paid_amount: inst.amount, bank_account_id: settleAccount }).eq("id", inst.id).eq("clinic_id", clinic.id);
           if (error) { toast.error("Nao foi possivel baixar uma das parcelas."); return; }
         }
-        const { error } = await db.from("payables").update({ status: "paid", paid_date: settleDate }).in("id", targets.map((p) => p.id)).eq("clinic_id", clinic.id);
-        if (error) { toast.error("Nao foi possivel baixar os lancamentos."); return; }
-        toast.success(`${targets.length} conta(s) baixada(s) (${installmentIds.length} parcela(s)).`);
+        const paidIds = new Set(toPay.map(i => i.id));
+        const fullyPaid = targets.filter(p => p.installments.every(i => i.status === "paid" || paidIds.has(i.id))).map(p => p.id);
+        if (fullyPaid.length) {
+          const { error } = await db.from("payables").update({ status: "paid", paid_date: settleDate }).in("id", fullyPaid).eq("clinic_id", clinic.id);
+          if (error) { toast.error("Nao foi possivel atualizar as contas."); return; }
+        }
+        toast.success(`${toPay.length} parcela(s) baixada(s)${fullyPaid.length ? ` · ${fullyPaid.length} conta(s) quitada(s)` : ""}.`);
         setSelectedPay([]);
+        setSelectedPayInst([]);
       }
       setSettleOpen(false);
       await loadData();
@@ -726,6 +735,7 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
 
   const recOnPage = recPage.pageItems.map(r => r.id);
   const payOnPage = payPage.pageItems.map(p => p.id);
+  const payInstOnPage = payInstPage.pageItems.filter(r => r.inst.status !== "paid").map(r => r.inst.id);
   const sortHead = (label: string, key: string, sort: SortState, setSort: (s: SortState) => void, className = "") => (
     <th className={`cursor-pointer select-none whitespace-nowrap bg-muted/50 text-xs font-medium text-muted-foreground hover:bg-muted ${className}`} onClick={() => setSort({ key, dir: sort.key === key && sort.dir === "asc" ? "desc" : "asc" })}>
       <span className="inline-flex items-center gap-1">{label}{sort.key === key ? (sort.dir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-40" />}</span>
@@ -976,7 +986,7 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
             <Tabs value={payView} onValueChange={v => setPayView(v as "entries" | "installments")} className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <TabsList><TabsTrigger value="entries" className="px-4">Contas</TabsTrigger><TabsTrigger value="installments" className="px-4">Parcelas</TabsTrigger></TabsList>
-                <div className="flex flex-wrap items-center gap-2">{selectionBar(selectedPay.length, () => setSelectedPay([]))}{pdfButton("payables")}<Button size="sm" onClick={() => openPay()}><Plus className="mr-1 h-4 w-4" />Novo</Button></div>
+                <div className="flex flex-wrap items-center gap-2">{payView === "installments" ? selectionBar(selectedPayInst.length, () => setSelectedPayInst([])) : selectionBar(selectedPay.length, () => setSelectedPay([]))}{pdfButton("payables")}<Button size="sm" onClick={() => openPay()}><Plus className="mr-1 h-4 w-4" />Novo</Button></div>
               </div>
               <TabsContent value="entries" className="mt-0">
                 <ResultsCard title="Contas a Pagar" count={filteredPayables.length} totals={payEntryTotals}>
@@ -996,7 +1006,7 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
                         <td className="text-muted-foreground">{paidCount}/{count}</td>
                         <td className="whitespace-nowrap text-right font-semibold text-foreground">{formatCurrency(p.amount)}</td>
                         <td className="whitespace-nowrap text-muted-foreground">{fmtDate(p.dueDate)}</td>
-                        <td><StatusSelect value={p.status as FinancialStatus} onChange={(status) => updatePayableStatus(p, status)} /></td>
+                        <td>{paidCount > 0 && paidCount < count ? <StatusPill status="partial" /> : <StatusSelect value={p.status as FinancialStatus} onChange={(status) => updatePayableStatus(p, status)} />}</td>
                         <td className="text-right"><ActionButtons onEdit={() => openPay(p)} onDelete={() => setDeletePayId(p.id)} /></td>
                       </tr>;
                     })}
@@ -1007,9 +1017,9 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
               </TabsContent>
               <TabsContent value="installments" className="mt-0">
                 <ResultsCard title="Parcelas a Pagar" count={payableInstallmentRows.length} totals={payInstTotals}>
-                  <table className="w-full"><thead><tr>{plainHead("Credor")}{plainHead("Empresa", "hidden lg:table-cell")}{plainHead("Descrição", "hidden md:table-cell")}{plainHead("Parcela")}{plainHead("Valor", "text-right")}{plainHead("Vencimento")}{plainHead("Pagamento")}{plainHead("Status")}</tr></thead><tbody>
-                    {payInstPage.pageItems.map(row => <tr key={row.key} className="border-b border-border/50 hover:bg-muted/30"><td className="font-medium text-foreground">{row.pay.supplier}</td><td className="hidden text-muted-foreground lg:table-cell">{companyName(row.pay.companyId, row.pay.companyName)}</td><td className="hidden max-w-[260px] truncate text-xs uppercase text-muted-foreground md:table-cell">{row.pay.description}</td><td className="text-muted-foreground">{row.inst.installmentNumber}/{row.count}</td><td className="whitespace-nowrap text-right font-semibold text-foreground">{formatCurrency(row.inst.amount)}</td><td className="whitespace-nowrap text-muted-foreground">{fmtDate(row.inst.dueDate)}</td><td className="whitespace-nowrap text-muted-foreground">{fmtDate(row.inst.paidDate)}</td><td><StatusPill status={row.inst.status} /></td></tr>)}
-                    {!loading && payableInstallmentRows.length === 0 && <EmptyRow text="Nenhuma parcela encontrada" span={8} />}
+                  <table className="w-full"><thead><tr><th className="w-10 bg-muted/50"><input type="checkbox" aria-label="Selecionar parcelas da página" className="h-4 w-4 accent-primary" checked={payInstOnPage.length > 0 && payInstOnPage.every(id => selectedPayInst.includes(id))} onChange={e => setSelectedPayInst(e.target.checked ? Array.from(new Set([...selectedPayInst, ...payInstOnPage])) : selectedPayInst.filter(id => !payInstOnPage.includes(id)))} /></th>{plainHead("Credor")}{plainHead("Empresa", "hidden lg:table-cell")}{plainHead("Descrição", "hidden md:table-cell")}{plainHead("Parcela")}{plainHead("Valor", "text-right")}{plainHead("Vencimento")}{plainHead("Pagamento")}{plainHead("Status")}</tr></thead><tbody>
+                    {payInstPage.pageItems.map(row => <tr key={row.key} className="border-b border-border/50 hover:bg-muted/30"><td>{row.inst.status !== "paid" && <input type="checkbox" aria-label="Selecionar parcela" className="h-4 w-4 accent-primary" checked={selectedPayInst.includes(row.inst.id)} onChange={() => toggle(selectedPayInst, setSelectedPayInst, row.inst.id)} />}</td><td className="font-medium text-foreground">{row.pay.supplier}</td><td className="hidden text-muted-foreground lg:table-cell">{companyName(row.pay.companyId, row.pay.companyName)}</td><td className="hidden max-w-[260px] truncate text-xs uppercase text-muted-foreground md:table-cell">{row.pay.description}</td><td className="text-muted-foreground">{row.inst.installmentNumber}/{row.count}</td><td className="whitespace-nowrap text-right font-semibold text-foreground">{formatCurrency(row.inst.amount)}</td><td className="whitespace-nowrap text-muted-foreground">{fmtDate(row.inst.dueDate)}</td><td className="whitespace-nowrap text-muted-foreground">{fmtDate(row.inst.paidDate)}</td><td><StatusPill status={row.inst.status} /></td></tr>)}
+                    {!loading && payableInstallmentRows.length === 0 && <EmptyRow text="Nenhuma parcela encontrada" span={9} />}
                   </tbody></table>
                   <TablePagination {...payInstPage} />
                 </ResultsCard>
