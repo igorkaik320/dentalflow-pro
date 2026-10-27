@@ -12,6 +12,7 @@ import DashboardPage from "./pages/DashboardPage";
 import AuditPage from "./pages/AuditPage";
 import FinancialPage from "./pages/FinancialPage";
 import CommissionsPage from "./pages/CommissionsPage";
+import AccountStatementPage from "./pages/AccountStatementPage";
 import PatrimonyPage from "./pages/PatrimonyPage";
 import SecurityPage from "./pages/SecurityPage";
 import RegistrationsPage from "./pages/RegistrationsPage";
@@ -57,6 +58,7 @@ const App = () => (
               <Route path="/financeiro/pagar" element={<AccessGuard module="financial"><FinancialPage section="payables" /></AccessGuard>} />
               <Route path="/financeiro/caixa" element={<AccessGuard module="financial"><FinancialPage section="cashflow" /></AccessGuard>} />
               <Route path="/financeiro/comissoes" element={<AccessGuard module="financial"><CommissionsPage /></AccessGuard>} />
+              <Route path="/financeiro/extrato" element={<AccessGuard module="financial"><AccountStatementPage /></AccessGuard>} />
               <Route path="/auditoria" element={<AuditPage />} />
               <Route path="/patrimonio" element={<AccessGuard module="patrimony"><PatrimonyPage /></AccessGuard>} />
               <Route path="/seguranca" element={<AccessGuard module="security"><SecurityPage /></AccessGuard>} />

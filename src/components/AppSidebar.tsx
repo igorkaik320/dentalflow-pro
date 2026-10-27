@@ -20,6 +20,7 @@ const groups: { key: string; label: string; icon: typeof User; items: MenuItem[]
     { title: "Contas a Pagar", url: "/financeiro/pagar", icon: ArrowDownCircle, module: "financial" },
     { title: "Controle de Caixa", url: "/financeiro/caixa", icon: Wallet, module: "financial" },
     { title: "Comissões", url: "/financeiro/comissoes", icon: CircleDollarSign, module: "financial" },
+    { title: "Extrato de Conta", url: "/financeiro/extrato", icon: Landmark, module: "financial" },
   ] },
   { key: "registrations", label: "Cadastros", icon: ClipboardList, items: [
     { title: "Empresas", url: "/cadastros?tab=companies", icon: Building2, module: "registrations" },
