@@ -463,14 +463,14 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
         toast.success(`${ids.length} lancamento(s) baixado(s).`);
         setSelectedRec([]);
       } else {
-        const toPay = targets.flatMap((p) => p.installments.filter((i) => i.status !== "paid" && (!byInstallment || selectedPayInst.includes(i.id))));
+        const toPay = (targets as PayableWithInstallments[]).flatMap((p) => p.installments.filter((i) => i.status !== "paid" && (!byInstallment || selectedPayInst.includes(i.id))));
         if (!toPay.length) { toast.error("As parcelas selecionadas ja estao baixadas."); return; }
         for (const inst of toPay) {
           const { error } = await db.from("payable_installments").update({ status: "paid", paid_date: settleDate, paid_amount: inst.amount, bank_account_id: settleAccount }).eq("id", inst.id).eq("clinic_id", clinic.id);
           if (error) { toast.error("Nao foi possivel baixar uma das parcelas."); return; }
         }
         const paidIds = new Set(toPay.map(i => i.id));
-        const fullyPaid = targets.filter(p => p.installments.every(i => i.status === "paid" || paidIds.has(i.id))).map(p => p.id);
+        const fullyPaid = (targets as PayableWithInstallments[]).filter(p => p.installments.every(i => i.status === "paid" || paidIds.has(i.id))).map(p => p.id);
         if (fullyPaid.length) {
           const { error } = await db.from("payables").update({ status: "paid", paid_date: settleDate }).in("id", fullyPaid).eq("clinic_id", clinic.id);
           if (error) { toast.error("Nao foi possivel atualizar as contas."); return; }
