@@ -11,6 +11,7 @@ BEGIN
  INSERT INTO public.financial_categories(clinic_id,name,type) VALUES(clinic,'Teste transacional categoria','expense') RETURNING id INTO category;
  INSERT INTO public.receivables(clinic_id,company_id,patient_name,professional_name,procedure_name,procedure_id,seller_id,executor_id,quantity,amount,due_date,sale_date,execution_date,status)
  VALUES(clinic,company,'Teste','', 'Teste transacional procedimento',proc,person,person,3,1000,'2026-10-31','2026-10-05','2026-10-06','open') RETURNING id INTO sale;
+ INSERT INTO public.receivable_items(clinic_id,receivable_id,procedure_id,procedure_name,seller_id,executor_id,quantity,amount,execution_date) VALUES(clinic,sale,proc,'Teste transacional procedimento',person,person,3,1000,'2026-10-06');
  result:=public.preview_commissions(clinic,company,'2026-10-01','sales');
  SELECT value INTO row FROM jsonb_array_elements(result) WHERE value->>'id'=person::text;
  IF (row->>'sold')::numeric<>1000 OR (row->>'sold_quantity')::integer<>3 THEN RAISE EXCEPTION 'Sale amount/quantity mismatch'; END IF;
@@ -20,11 +21,11 @@ BEGIN
  result:=public.preview_commissions(clinic,company,'2026-10-01','sales');
  SELECT value INTO row FROM jsonb_array_elements(result) WHERE value->>'id'=person::text;
  IF (row->>'bonus')::numeric<>50 THEN RAISE EXCEPTION 'Percentage bonus must not multiply total by quantity'; END IF;
- UPDATE public.receivables SET execution_date=null WHERE id=sale;
+ UPDATE public.receivable_items SET execution_date=null WHERE receivable_id=sale;
  result:=public.preview_commissions(clinic,company,'2026-10-01','received');
  SELECT value INTO row FROM jsonb_array_elements(result) WHERE value->>'id'=person::text;
  IF (row->>'total')::numeric<>0 THEN RAISE EXCEPTION 'Unpaid sale and unconfirmed execution must not earn received commission'; END IF;
- UPDATE public.receivables SET status='paid',paid_date='2026-11-02',execution_date='2026-10-06' WHERE id=sale;
+ UPDATE public.receivables SET status='paid',paid_date='2026-11-02' WHERE id=sale; UPDATE public.receivable_items SET execution_date='2026-10-06' WHERE receivable_id=sale;
  result:=public.preview_commissions(clinic,company,'2026-11-01','received');
  SELECT value INTO row FROM jsonb_array_elements(result) WHERE value->>'id'=person::text;
  IF (row->>'commission')::numeric<>100 OR (row->>'bonus')::numeric<>0 THEN RAISE EXCEPTION 'Receipt and execution dates must be independent'; END IF;

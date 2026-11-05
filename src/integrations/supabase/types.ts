@@ -1191,6 +1191,87 @@ export type Database = {
         }
         Relationships: []
       }
+      receivable_items: {
+        Row: {
+          amount: number
+          clinic_id: string
+          created_at: string
+          execution_date: string | null
+          executor_id: string | null
+          id: string
+          procedure_id: string | null
+          procedure_name: string
+          quantity: number
+          receivable_id: string
+          seller_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          clinic_id: string
+          created_at?: string
+          execution_date?: string | null
+          executor_id?: string | null
+          id?: string
+          procedure_id?: string | null
+          procedure_name?: string
+          quantity?: number
+          receivable_id: string
+          seller_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          clinic_id?: string
+          created_at?: string
+          execution_date?: string | null
+          executor_id?: string | null
+          id?: string
+          procedure_id?: string | null
+          procedure_name?: string
+          quantity?: number
+          receivable_id?: string
+          seller_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receivable_items_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receivable_items_executor_id_fkey"
+            columns: ["executor_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receivable_items_procedure_id_fkey"
+            columns: ["procedure_id"]
+            isOneToOne: false
+            referencedRelation: "procedures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receivable_items_receivable_id_fkey"
+            columns: ["receivable_id"]
+            isOneToOne: false
+            referencedRelation: "receivables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receivable_items_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       receivables: {
         Row: {
           amount: number
