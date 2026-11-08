@@ -3,6 +3,7 @@ import { ClinicLayout } from "@/components/ClinicLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -308,7 +309,7 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
     const c = creators[id];
     if (!c) return null;
     const text = `Cadastrado por ${c.name} em ${new Date(c.at).toLocaleString("pt-BR")}`;
-    return <span className="inline-flex cursor-help" title={text}><Info className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-label={text} /></span>;
+    return <Popover><PopoverTrigger asChild><button type="button" className="inline-flex cursor-pointer" aria-label={text} title={text} onClick={e => e.stopPropagation()}><Info className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /></button></PopoverTrigger><PopoverContent className="w-auto p-3 text-xs" side="top"><p className="font-medium text-foreground">{c.name}</p><p className="text-muted-foreground">Cadastrado em {new Date(c.at).toLocaleString("pt-BR")}</p></PopoverContent></Popover>;
   };
   const companyOptions = useMemo(() => companies.map(c => ({ id: c.id, code: String(c.code), label: c.name, legalName: c.legalName, document: c.cnpj })), [companies]);
 
