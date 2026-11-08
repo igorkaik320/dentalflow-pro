@@ -1045,7 +1045,7 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
                       const count = p.installments.length || p.installmentsCount || 1;
                       return <tr key={p.id} className="border-b border-border/50 hover:bg-muted/30">
                         <td><input type="checkbox" aria-label="Selecionar" className="h-4 w-4 accent-primary" checked={selectedPay.includes(p.id)} onChange={() => toggle(selectedPay, setSelectedPay, p.id)} /></td>
-                        <td className="font-medium text-foreground"><span className="inline-flex items-center gap-1.5">{p.supplier}{creatorInfo(p.id)}</span></td>
+                        <td className="font-medium text-foreground">{p.supplier}</td>
                         <td className="hidden text-muted-foreground lg:table-cell">{companyName(p.companyId, p.companyName)}</td>
                         <td className="hidden text-xs text-muted-foreground xl:table-cell">{p.category || "-"}</td>
                         <td className="hidden max-w-[260px] truncate text-xs uppercase text-muted-foreground md:table-cell" title={p.description}>{p.description}</td>
@@ -1053,7 +1053,7 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
                         <td className="whitespace-nowrap text-right font-semibold text-foreground">{formatCurrency(p.amount)}</td>
                         <td className="whitespace-nowrap text-muted-foreground">{fmtDate(p.dueDate)}</td>
                         <td>{paidCount > 0 && paidCount < count ? <StatusPill status="partial" /> : <StatusSelect value={p.status as FinancialStatus} onChange={(status) => updatePayableStatus(p, status)} />}</td>
-                        <td className="text-right"><ActionButtons onEdit={() => openPay(p)} onDelete={() => setDeletePayId(p.id)} /></td>
+                        <td className="text-right"><ActionButtons info={creatorInfo(p.id)} onEdit={() => openPay(p)} onDelete={() => setDeletePayId(p.id)} /></td>
                       </tr>;
                     })}
                     {!loading && filteredPayables.length === 0 && <EmptyRow text="Nenhuma conta encontrada" span={10} />}
@@ -1090,14 +1090,14 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
                   </tr></thead><tbody>
                     {loading ? <EmptyRow text="Carregando lançamentos..." span={9} /> : recPage.pageItems.map(r => <tr key={r.id} className="border-b border-border/50 hover:bg-muted/30">
                       <td><input type="checkbox" aria-label="Selecionar" className="h-4 w-4 accent-primary" checked={selectedRec.includes(r.id)} onChange={() => toggle(selectedRec, setSelectedRec, r.id)} /></td>
-                      <td className="font-medium text-foreground"><span className="inline-flex items-center gap-1.5">{r.patientName}{creatorInfo(r.id)}</span></td>
+                      <td className="font-medium text-foreground">{r.patientName}</td>
                       <td className="hidden text-muted-foreground lg:table-cell">{companyName(r.companyId, r.companyName)}</td>
                       <td className="hidden text-muted-foreground md:table-cell">{r.procedure}</td>
                       <td className="hidden text-muted-foreground xl:table-cell">{r.paymentMethod}{r.installments > 1 ? ` (${r.installments}x)` : ""}</td>
                       <td className="whitespace-nowrap text-right font-semibold text-foreground">{formatCurrency(r.amount)}</td>
                       <td className="whitespace-nowrap text-muted-foreground">{fmtDate(r.dueDate)}</td>
                       <td><StatusSelect value={r.status as FinancialStatus} onChange={(status) => updateReceivableStatus(r, status)} /></td>
-                      <td className="text-right"><ActionButtons onEdit={() => openRec(r)} onDelete={() => setDeleteRecId(r.id)} /></td>
+                      <td className="text-right"><ActionButtons info={creatorInfo(r.id)} onEdit={() => openRec(r)} onDelete={() => setDeleteRecId(r.id)} /></td>
                     </tr>)}
                     {!loading && filteredReceivables.length === 0 && <EmptyRow text="Nenhuma conta encontrada" span={9} />}
                   </tbody></table>
@@ -1155,8 +1155,8 @@ function StatusPill({ status }: { status: string }) {
   return <span className={`rounded-md px-2.5 py-1 text-[11px] font-semibold ${statusBadge[status]}`}>{statusLabel[status]}</span>;
 }
 
-function ActionButtons({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
-  return <div className="flex items-center justify-end gap-1"><Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={onEdit}><Edit2 className="h-3 w-3" /></Button><Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive" onClick={onDelete}><Trash2 className="h-3 w-3" /></Button></div>;
+function ActionButtons({ onEdit, onDelete, info }: { onEdit: () => void; onDelete: () => void; info?: ReactNode }) {
+  return <div className="flex items-center justify-end gap-1">{info}<Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={onEdit}><Edit2 className="h-3 w-3" /></Button><Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive" onClick={onDelete}><Trash2 className="h-3 w-3" /></Button></div>;
 }
 
 function StatusSelect({ value, onChange }: { value: FinancialStatus; onChange: (status: FinancialStatus) => void }) {
