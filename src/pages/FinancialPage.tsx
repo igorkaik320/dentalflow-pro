@@ -15,7 +15,7 @@ import { db } from "@/lib/clinicCloud";
 import { formatCurrency, parseCurrencyInput, onlyDigits } from "@/lib/utils";
 import type { FinancialCategory, Payable, PayableInstallment, Professional, Receivable, Supplier } from "@/data/mockData";
 import { toast } from "sonner";
-import { DollarSign, Plus, Edit2, Trash2, CalendarDays, CheckCircle2, ArrowUp, ArrowDown, ArrowUpDown, FileDown } from "lucide-react";
+import { DollarSign, Plus, Edit2, Trash2, CalendarDays, CheckCircle2, ArrowUp, ArrowDown, ArrowUpDown, FileDown, Info } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FinanceFilterPanel, emptyFinanceFilters, type FinanceFilters } from "@/components/FinanceFilterPanel";
 import { TablePagination, usePagination } from "@/components/TablePagination";
@@ -294,6 +294,7 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
   const [companies, setCompanies] = useState<CompanyRow[]>([]);
   const [recView, setRecView] = useState<"entries" | "installments">("entries");
   const [payView, setPayView] = useState<"entries" | "installments">("entries");
+  const [creators, setCreators] = useState<Record<string, { name: string; at: string }>>({});
 
   useEffect(() => {
     if (!clinic.id) return;
@@ -303,6 +304,12 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
   }, [clinic.id]);
   const companyById = useMemo(() => new Map(companies.map((c) => [c.id, c])), [companies]);
   const companyName = (id?: string, fallback?: string) => (id && companyById.get(id)?.name) || fallback || "-";
+  const creatorInfo = (id: string) => {
+    const c = creators[id];
+    if (!c) return null;
+    const text = `Cadastrado por ${c.name} em ${new Date(c.at).toLocaleString("pt-BR")}`;
+    return <span className="inline-flex cursor-help" title={text}><Info className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-label={text} /></span>;
+  };
   const companyOptions = useMemo(() => companies.map(c => ({ id: c.id, code: String(c.code), label: c.name, legalName: c.legalName, document: c.cnpj })), [companies]);
 
   useEffect(() => {
@@ -327,6 +334,23 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
       db.from("procedures").select("id, name, default_price, average_duration, company_id").eq("clinic_id", clinic.id).order("name"),
     ]);
     const bankRes = await bankPromise;
+    void (async () => {
+      const [logsRes, profilesRes] = await Promise.all([
+        db.from("activity_logs").select("record_id, user_id, created_at").eq("clinic_id", clinic.id).eq("action", "INSERT").in("table_name", ["payables", "receivables"]).order("created_at", { ascending: false }),
+        db.from("profiles").select("user_id, full_name, email"),
+      ]);
+      if (logsRes.error || profilesRes.error) return;
+      const nameOf = (id: string | null) => {
+        if (!id) return "Sistema / importação";
+        const p = (profilesRes.data || []).find((pr: any) => pr.user_id === id);
+        return p?.full_name || p?.email || "Usuário";
+      };
+      const map: Record<string, { name: string; at: string }> = {};
+      for (const log of logsRes.data || []) {
+        if (log.record_id && !map[log.record_id]) map[log.record_id] = { name: nameOf(log.user_id), at: log.created_at };
+      }
+      setCreators(map);
+    })();
     setBankAccounts((bankRes.data || []).map((b: any) => ({ id: b.id, companyId: b.company_id || undefined, accountType: b.account_type, name: `${b.bank_name} · Ag ${b.agency} · CC ${b.account_number}`, initialDate: b.initial_date, initialBalance: Number(b.initial_balance || 0), active: Boolean(b.active) })));
     setLoading(false);
     const error = recRes.error || payRes.error || profRes.error || catRes.error || supplierRes.error || clientRes.error || procedureRes.error;
@@ -1020,7 +1044,7 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
                       const count = p.installments.length || p.installmentsCount || 1;
                       return <tr key={p.id} className="border-b border-border/50 hover:bg-muted/30">
                         <td><input type="checkbox" aria-label="Selecionar" className="h-4 w-4 accent-primary" checked={selectedPay.includes(p.id)} onChange={() => toggle(selectedPay, setSelectedPay, p.id)} /></td>
-                        <td className="font-medium text-foreground">{p.supplier}</td>
+                        <td className="font-medium text-foreground"><span className="inline-flex items-center gap-1.5">{p.supplier}{creatorInfo(p.id)}</span></td>
                         <td className="hidden text-muted-foreground lg:table-cell">{companyName(p.companyId, p.companyName)}</td>
                         <td className="hidden text-xs text-muted-foreground xl:table-cell">{p.category || "-"}</td>
                         <td className="hidden max-w-[260px] truncate text-xs uppercase text-muted-foreground md:table-cell" title={p.description}>{p.description}</td>
@@ -1065,7 +1089,7 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
                   </tr></thead><tbody>
                     {loading ? <EmptyRow text="Carregando lançamentos..." span={9} /> : recPage.pageItems.map(r => <tr key={r.id} className="border-b border-border/50 hover:bg-muted/30">
                       <td><input type="checkbox" aria-label="Selecionar" className="h-4 w-4 accent-primary" checked={selectedRec.includes(r.id)} onChange={() => toggle(selectedRec, setSelectedRec, r.id)} /></td>
-                      <td className="font-medium text-foreground">{r.patientName}</td>
+                      <td className="font-medium text-foreground"><span className="inline-flex items-center gap-1.5">{r.patientName}{creatorInfo(r.id)}</span></td>
                       <td className="hidden text-muted-foreground lg:table-cell">{companyName(r.companyId, r.companyName)}</td>
                       <td className="hidden text-muted-foreground md:table-cell">{r.procedure}</td>
                       <td className="hidden text-muted-foreground xl:table-cell">{r.paymentMethod}{r.installments > 1 ? ` (${r.installments}x)` : ""}</td>
