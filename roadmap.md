@@ -1,5 +1,8 @@
 # Ajustes solicitados
 
+## Aviso ao entrar
+- [x] Mostrar valores de parcelas de hoje e vencidas, abrir Parcelas com filtros e permitir fechar ou ocultar hoje.
+
 ## Controle de comissões
 - [ ] Corrigir lista de vendedores e executores e validar cadastros existentes.
 - [ ] Apurar vendas, metas e bonificações por mês e empresa.

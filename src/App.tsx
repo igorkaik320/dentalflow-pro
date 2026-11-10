@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ClinicProvider } from "@/contexts/ClinicContext";
 import { ClinicLayout } from "@/components/ClinicLayout";
 import { AuthGate } from "@/components/AuthGate";
+import { PayableDueNotice } from "@/components/PayableDueNotice";
 import { useClinic } from "@/contexts/ClinicContext";
 import type { PermissionModule } from "@/lib/permissions";
 import DashboardPage from "./pages/DashboardPage";
@@ -49,6 +50,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <AuthGate>
+            <PayableDueNotice />
             <Routes>
               <Route path="/" element={<AccessGuard module="dashboard"><DashboardPage /></AccessGuard>} />
               <Route path="/login" element={<AccessGuard module="dashboard"><DashboardPage /></AccessGuard>} />

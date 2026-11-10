@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useSearchParams } from "react-router-dom";
+import { duePeriod } from "@/lib/payableDueNotice";
 import { ClinicLayout } from "@/components/ClinicLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -258,6 +260,7 @@ function mapSupplier(row: any): Supplier {
 }
 
 export default function FinancialPage({ section }: { section: "receivables" | "payables" | "cashflow" }) {
+  const [searchParams] = useSearchParams();
   const activeTab = section;
   const { clinic } = useClinic();
   const [receivables, setReceivables] = useState<Receivable[]>([]);
@@ -296,6 +299,18 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
   const [recView, setRecView] = useState<"entries" | "installments">("entries");
   const [payView, setPayView] = useState<"entries" | "installments">("entries");
   const [creators, setCreators] = useState<Record<string, { name: string; at: string }>>({});
+
+  useEffect(() => {
+    const group = searchParams.get("due");
+    if (section !== "payables" || (group !== "today" && group !== "overdue")) return;
+    const day = searchParams.get("day");
+    const filters = { ...emptyFinanceFilters, ...duePeriod(group, day && /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : undefined) };
+    setPayView("installments");
+    setPayDraft(filters);
+    setPayApplied(filters);
+    setSelectedPay([]);
+    setSelectedPayInst([]);
+  }, [section, searchParams]);
 
   useEffect(() => {
     if (!clinic.id) return;

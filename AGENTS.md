@@ -17,3 +17,4 @@
 
 - Presentation follows the reference through shared layout, form primitives and EntitySearchInput; retain local routes, permissions and database workflows instead of importing reference business logic.
 - Registration menu links use the existing guarded registrations route with a tab query parameter, so navigation and the selected registration tab remain synchronized.
+- Payable entry notices read clinic-scoped unpaid installments under existing financial access; date groups use São Paulo days, daily dismissal is user/clinic-scoped, and query parameters apply the same date/status filters in FinancialPage.
