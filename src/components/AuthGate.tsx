@@ -1,8 +1,8 @@
 import { FormEvent, ReactNode, useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { Activity, ArrowRight, Loader2, LockKeyhole, ShieldCheck } from "lucide-react";
+import { Activity, ArrowRight, Eye, EyeOff, Loader2, LockKeyhole, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import controlClinicMark from "@/assets/controlclinic-mark.png";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,50 +14,34 @@ import { toast } from "sonner";
 
 function LoginShell({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-muted/30 flex items-center justify-center p-4 sm:p-6">
-      <div className="w-full max-w-5xl grid grid-cols-1 overflow-hidden rounded-xl border border-border bg-card shadow-elegant lg:grid-cols-[0.95fr_1.05fr]">
-        <div className="hidden bg-sidebar text-sidebar-foreground p-8 lg:flex lg:flex-col lg:justify-between">
-          <div>
-            <div className="flex items-center gap-3">
-              <div className="h-11 w-11 rounded-lg bg-primary flex items-center justify-center">
-                <Activity className="h-5 w-5 text-primary-foreground" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-sidebar-accent-foreground">Virtuosa</h1>
-                <p className="text-xs text-sidebar-muted">Gestão Estética</p>
-              </div>
-            </div>
-            <div className="mt-12 max-w-sm">
-              <p className="text-xs uppercase tracking-[0.24em] text-sidebar-muted">Área restrita</p>
-              <h2 className="mt-3 text-3xl font-bold leading-tight text-sidebar-accent-foreground">
-                Gestão centralizada para a rotina da clínica.
-              </h2>
-              <p className="mt-4 text-sm leading-6 text-sidebar-muted">
-                Acesse agenda, financeiro, cadastros e patrimônio com segurança e permissões por usuário.
-              </p>
-            </div>
-          </div>
-          <div className="rounded-lg border border-sidebar-border bg-sidebar-accent/30 p-4 text-sm text-sidebar-muted">
-            Cada acesso é vinculado à clínica e pode ser aprovado por um administrador.
-          </div>
-        </div>
-        <div className="p-6 sm:p-8 lg:p-10">
-          {children}
-        </div>
-      </div>
+    <div className="controlclinic-login min-h-svh flex flex-col bg-background text-foreground">
+      <header className="flex items-center justify-between gap-4 border-b border-border px-5 py-5 sm:px-10">
+        <a href="/login" className="flex items-center gap-2.5" aria-label="ControlClinic — início">
+          <img src={controlClinicMark} alt="" width={1024} height={1024} className="h-9 w-9 object-contain" />
+          <span className="text-xl font-semibold">Control<span className="text-primary">Clinic</span></span>
+        </a>
+        <span className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground"><ShieldCheck className="h-4 w-4 text-primary" />Área restrita</span>
+      </header>
+      <main className="flex flex-1 items-center justify-center px-5 py-10 sm:py-14">
+        <div className="w-full max-w-[400px]">{children}</div>
+      </main>
+      <footer className="flex flex-wrap justify-center gap-x-5 gap-y-2 px-5 pb-6 text-xs text-muted-foreground">
+        <span>ControlClinic</span>
+        <span className="flex items-center gap-1.5"><LockKeyhole className="h-3.5 w-3.5" />Acesso seguro</span>
+      </footer>
     </div>
   );
 }
 
 function CompactBrand({ title, subtitle, icon: Icon = Activity }: { title: string; subtitle: string; icon?: typeof Activity }) {
   return (
-    <div className="flex items-center gap-3 mb-6">
-      <div className="h-11 w-11 rounded-lg bg-primary flex items-center justify-center">
-        <Icon className="h-5 w-5 text-primary-foreground" />
+    <div className="mb-7">
+      <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-lg border border-primary/15 bg-primary/5">
+        <Icon className="h-6 w-6 text-primary" />
       </div>
       <div>
-        <h1 className="text-xl font-bold text-foreground">{title}</h1>
-        <p className="text-sm text-muted-foreground">{subtitle}</p>
+        <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
+        <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>
       </div>
     </div>
   );
@@ -69,6 +53,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const [submitting, setSubmitting] = useState(false);
   const [passwordSetupMode, setPasswordSetupMode] = useState(() => new URLSearchParams(location.search).get("set-password") === "1");
   const [setupEmail, setSetupEmail] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -209,7 +194,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   return (
     <LoginShell>
       <div className="max-w-md mx-auto">
-        <CompactBrand title="Entrar na Virtuosa" subtitle="Acesse sua conta para continuar." />
+        <CompactBrand title="Bem-vindo ao ControlClinic" subtitle="Entre na sua conta para continuar." icon={LockKeyhole} />
 
         {passwordSetupMode ? (
           <div className="rounded-md border border-primary/20 bg-primary/5 p-4 text-sm text-primary mb-5">
@@ -217,9 +202,11 @@ export function AuthGate({ children }: { children: ReactNode }) {
           </div>
         ) : null}
 
-        <Button variant="outline" className="w-full h-11 mb-5" onClick={handleGoogle} disabled={submitting}>
+        <Button variant="outline" className="w-full h-11" onClick={handleGoogle} disabled={submitting}>
+          <span className="mr-2 text-base font-bold text-primary" aria-hidden="true">G</span>
           Entrar com Google
         </Button>
+        <div className="my-6 flex items-center gap-4 text-xs text-muted-foreground"><span className="h-px flex-1 bg-border" />ou com email<span className="h-px flex-1 bg-border" /></div>
 
         <Tabs defaultValue="login">
           <TabsList className="grid w-full grid-cols-2">
@@ -228,8 +215,8 @@ export function AuthGate({ children }: { children: ReactNode }) {
           </TabsList>
           <TabsContent value="login">
             <form className="space-y-4 mt-4" onSubmit={(event) => handleEmailAuth(event, "login")}>
-              <div><Label>Email</Label><Input name="email" type="email" autoComplete="email" /></div>
-              <div><Label>Senha</Label><Input name="password" type="password" autoComplete="current-password" placeholder="Primeiro acesso? deixe em branco" /></div>
+              <div className="space-y-2"><Label htmlFor="login-email">Email</Label><Input id="login-email" name="email" type="email" autoComplete="email" placeholder="Seu email" className="h-11" /></div>
+              <div className="space-y-2"><Label htmlFor="login-password">Senha</Label><div className="relative"><Input id="login-password" name="password" type={showPassword ? "text" : "password"} autoComplete="current-password" placeholder="Sua senha" className="h-11 pr-12" /><Button type="button" variant="ghost" size="icon" className="absolute right-0.5 top-0.5 h-10 w-10 text-muted-foreground" aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"} title={showPassword ? "Ocultar senha" : "Mostrar senha"} onClick={() => setShowPassword((value) => !value)}>{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</Button></div><p className="text-xs text-muted-foreground">Primeiro acesso? Deixe a senha em branco.</p></div>
               <Button type="submit" className="w-full h-11" disabled={submitting}>
                 {submitting ? "Entrando..." : <><span>Entrar</span><ArrowRight className="h-4 w-4 ml-2" /></>}
               </Button>
@@ -237,9 +224,9 @@ export function AuthGate({ children }: { children: ReactNode }) {
           </TabsContent>
           <TabsContent value="signup">
             <form className="space-y-4 mt-4" onSubmit={(event) => handleEmailAuth(event, "signup")}>
-              <div><Label>Nome</Label><Input name="fullName" autoComplete="name" /></div>
-              <div><Label>Email</Label><Input name="email" type="email" autoComplete="email" /></div>
-              <div><Label>Senha</Label><Input name="password" type="password" autoComplete="new-password" /></div>
+              <div className="space-y-2"><Label htmlFor="signup-name">Nome</Label><Input id="signup-name" name="fullName" autoComplete="name" className="h-11" /></div>
+              <div className="space-y-2"><Label htmlFor="signup-email">Email</Label><Input id="signup-email" name="email" type="email" autoComplete="email" className="h-11" /></div>
+              <div className="space-y-2"><Label htmlFor="signup-password">Senha</Label><Input id="signup-password" name="password" type="password" autoComplete="new-password" className="h-11" /></div>
               <Button type="submit" className="w-full h-11" disabled={submitting}>{submitting ? "Cadastrando..." : "Solicitar acesso"}</Button>
               <p className="text-xs leading-5 text-muted-foreground">
                 A solicitação será enviada para aprovação de um administrador.

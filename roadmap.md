@@ -1,5 +1,9 @@
 # Ajustes solicitados
 
+## Identidade e login
+- [x] Criar ícone do ControlClinic e atualizar nome no navegador.
+- [x] Melhorar a apresentação do login e verificar computador e celular, preservando os acessos existentes.
+
 ## Aviso ao entrar
 - [x] Mostrar valores de parcelas de hoje e vencidas, abrir Parcelas com filtros e permitir fechar ou ocultar hoje.
 

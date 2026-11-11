@@ -1,5 +1,7 @@
 # Architecture rules
 
+- Login branding and the browser favicon share the same image asset; keep authentication workflows and clinic-specific navigation branding independent of presentation.
+
 - Commission previews and payable generation use authenticated database functions; calculate sales and confirmed executions separately, snapshot the calculation, and atomically deduplicate by clinic/company/collaborator/month. Receivables store procedure identity, quantity, sale date and confirmed execution date instead of inferring execution from payment or installments.
 
 - Registration codes are database-assigned, immutable and clinic-scoped through atomic counters; selectors must use stored codes rather than list positions or UUID fragments to keep numbers stable under sorting and concurrent creation.
