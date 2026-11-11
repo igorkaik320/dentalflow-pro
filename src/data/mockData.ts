@@ -97,6 +97,7 @@ export interface Receivable {
   bankAccountId?: string;
   companyId?: string;
   companyName?: string;
+  createdAt?: string;
 }
 
 export interface Payable {
@@ -115,6 +116,7 @@ export interface Payable {
   companyId?: string;
   companyName?: string;
   sourceNotes?: string;
+  createdAt?: string;
   installments?: PayableInstallment[];
 }
 

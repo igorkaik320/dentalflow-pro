@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import { duePeriod } from "@/lib/payableDueNotice";
+import { DEFAULT_FINANCE_SORT, sortRows, type SortState } from "@/lib/financeOrder";
 import { ClinicLayout } from "@/components/ClinicLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,17 +36,6 @@ type FinancialStatus = "open" | "paid" | "overdue";
 type InstallmentForm = Omit<PayableInstallment, "payableId">;
 type PayableWithInstallments = Payable & { supplierId?: string; installments: PayableInstallment[] };
 type PayableForm = Omit<Payable, "id" | "installments"> & { supplierId?: string; installmentsCount: number; installments: InstallmentForm[] };
-
-type SortState = { key: string; dir: "asc" | "desc" };
-
-function sortRows<T>(rows: T[], sort: SortState, get: (row: T, key: string) => string | number) {
-  const dir = sort.dir === "asc" ? 1 : -1;
-  return [...rows].sort((a, b) => {
-    const va = get(a, sort.key), vb = get(b, sort.key);
-    if (typeof va === "number" && typeof vb === "number") return (va - vb) * dir;
-    return String(va).localeCompare(String(vb), "pt-BR") * dir;
-  });
-}
 
 const today = () => new Date().toISOString().split("T")[0];
 
@@ -185,6 +175,7 @@ function mapReceivable(row: any): Receivable {
     quantity: Number(row.quantity || 1),
     saleDate: row.sale_date,
     executionDate: row.execution_date || null,
+    createdAt: row.created_at || undefined,
   } as any;
 }
 
@@ -226,6 +217,7 @@ function mapPayable(row: any): PayableWithInstallments {
     companyId: row.company_id || undefined,
     companyName: row.company_name || undefined,
     sourceNotes: row.source_notes || undefined,
+    createdAt: row.created_at || undefined,
     installments,
   };
 }
@@ -275,8 +267,10 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
   const [recApplied, setRecApplied] = useState<FinanceFilters>(emptyFinanceFilters);
   const [payDraft, setPayDraft] = useState<FinanceFilters>(emptyFinanceFilters);
   const [payApplied, setPayApplied] = useState<FinanceFilters>(emptyFinanceFilters);
-  const [recSort, setRecSort] = useState<SortState>({ key: "dueDate", dir: "desc" });
-  const [paySort, setPaySort] = useState<SortState>({ key: "dueDate", dir: "desc" });
+  const [recSort, setRecSort] = useState<SortState>(DEFAULT_FINANCE_SORT);
+  const [paySort, setPaySort] = useState<SortState>(DEFAULT_FINANCE_SORT);
+  const [recInstSort, setRecInstSort] = useState<SortState>(DEFAULT_FINANCE_SORT);
+  const [payInstSort, setPayInstSort] = useState<SortState>(DEFAULT_FINANCE_SORT);
 
   const [showRecForm, setShowRecForm] = usePersistentState(storageKeys.showReceivableForm, false);
   const [editingRec, setEditingRec] = useState<Receivable | null>(null);
@@ -341,8 +335,8 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
     setLoading(true);
     const bankPromise = db.from("bank_accounts").select("*").eq("clinic_id", clinic.id).order("bank_name");
     const [recRes, payRes, profRes, catRes, supplierRes, clientRes, procedureRes] = await Promise.all([
-      db.from("receivables").select("*").eq("clinic_id", clinic.id).order("due_date", { ascending: false }),
-      db.from("payables").select("*, payable_installments(*)").eq("clinic_id", clinic.id).order("due_date", { ascending: false }),
+      db.from("receivables").select("*").eq("clinic_id", clinic.id).order("created_at", { ascending: false }),
+      db.from("payables").select("*, payable_installments(*)").eq("clinic_id", clinic.id).order("created_at", { ascending: false }),
       db.from("professionals").select("*").eq("clinic_id", clinic.id).order("name"),
       db.from("financial_categories").select("*").eq("clinic_id", clinic.id).order("type").order("name"),
       db.from("suppliers").select("*").eq("clinic_id", clinic.id).order("name"),
@@ -454,15 +448,15 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
     const client = r.patientId ? clientById.get(r.patientId) : undefined;
     return matchesBase(recApplied, { companyId: r.companyId, companyName: companyName(r.companyId, r.companyName), entityId: r.patientId, entityName: r.patientName, entityText: `${r.patientName} ${client?.cpf || ""}`, category: r.category });
   }), [receivables, recApplied, clientById, companyById]);
-  const filteredReceivables = useMemo(() => sortRows(recBase.filter(r => matchesStatusDate(recApplied, r.status, r.dueDate)), recSort, (r, k) => k === "amount" ? r.amount : k === "client" ? r.patientName.toLowerCase() : k === "company" ? companyName(r.companyId, r.companyName).toLowerCase() : k === "procedure" ? r.procedure.toLowerCase() : k === "status" ? r.status : r.dueDate || ""), [recBase, recApplied, recSort]);
+  const filteredReceivables = useMemo(() => sortRows(recBase.filter(r => matchesStatusDate(recApplied, r.status, r.dueDate)), recSort, (r, k) => k === "created" ? r.createdAt || "" : k === "amount" ? r.amount : k === "client" ? r.patientName.toLowerCase() : k === "company" ? companyName(r.companyId, r.companyName).toLowerCase() : k === "procedure" ? r.procedure.toLowerCase() : k === "status" ? r.status : r.dueDate || ""), [recBase, recApplied, recSort]);
 
   const payBase = useMemo(() => payables.filter((p) => {
     const sup = p.supplierId ? supplierById.get(p.supplierId) : undefined;
     return matchesBase(payApplied, { companyId: p.companyId, companyName: companyName(p.companyId, p.companyName), entityId: p.supplierId, entityName: p.supplier, entityText: `${p.supplier} ${sup?.legalName || ""} ${sup?.document || ""} ${sup?.cnpj || ""}`, category: p.category });
   }), [payables, payApplied, supplierById, companyById]);
-  const filteredPayables = useMemo(() => sortRows(payBase.filter(p => matchesStatusDate(payApplied, p.status, p.dueDate)), paySort, (p, k) => k === "amount" ? p.amount : k === "supplier" ? p.supplier.toLowerCase() : k === "company" ? companyName(p.companyId, p.companyName).toLowerCase() : k === "category" ? (p.category || "").toLowerCase() : k === "status" ? p.status : p.dueDate || ""), [payBase, payApplied, paySort]);
+  const filteredPayables = useMemo(() => sortRows(payBase.filter(p => matchesStatusDate(payApplied, p.status, p.dueDate)), paySort, (p, k) => k === "created" ? p.createdAt || "" : k === "amount" ? p.amount : k === "supplier" ? p.supplier.toLowerCase() : k === "company" ? companyName(p.companyId, p.companyName).toLowerCase() : k === "category" ? (p.category || "").toLowerCase() : k === "status" ? p.status : p.dueDate || ""), [payBase, payApplied, paySort]);
 
-  const receivableInstallments = useMemo(() => recBase.flatMap((r) => {
+  const receivableInstallments = useMemo(() => sortRows(recBase.flatMap((r) => {
     const count = Math.max(1, r.installments || 1);
     const base = Math.floor((r.amount / count) * 100) / 100;
     return Array.from({ length: count }, (_, i) => ({
@@ -470,9 +464,9 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
       amount: i === count - 1 ? Math.round((r.amount - base * (count - 1)) * 100) / 100 : base,
       dueDate: addMonths(r.dueDate, i),
     }));
-  }).filter(row => matchesStatusDate(recApplied, row.rec.status, row.dueDate)).sort((a, b) => a.dueDate.localeCompare(b.dueDate)), [recBase, recApplied]);
-  const payableInstallmentRows = useMemo(() => payBase.flatMap((p) => p.installments.map((inst) => ({ key: inst.id, pay: p, inst, count: p.installments.length })))
-    .filter(row => matchesStatusDate(payApplied, row.inst.status, row.inst.dueDate)).sort((a, b) => a.inst.dueDate.localeCompare(b.inst.dueDate)), [payBase, payApplied]);
+  }).filter(row => matchesStatusDate(recApplied, row.rec.status, row.dueDate)), recInstSort, (row, k) => k === "created" ? row.rec.createdAt || "" : k === "amount" ? row.amount : k === "client" ? row.rec.patientName.toLowerCase() : k === "status" ? row.rec.status : row.dueDate || ""), [recBase, recApplied, recInstSort]);
+  const payableInstallmentRows = useMemo(() => sortRows(payBase.flatMap((p) => p.installments.map((inst) => ({ key: inst.id, pay: p, inst, count: p.installments.length })))
+    .filter(row => matchesStatusDate(payApplied, row.inst.status, row.inst.dueDate)), payInstSort, (row, k) => k === "created" ? row.pay.createdAt || "" : k === "amount" ? row.inst.amount : k === "supplier" ? row.pay.supplier.toLowerCase() : k === "status" ? row.inst.status : row.inst.dueDate || ""), [payBase, payApplied, payInstSort]);
 
   const recPage = usePagination(filteredReceivables, 30, recApplied);
   const payPage = usePagination(filteredPayables, 30, payApplied);
@@ -1078,7 +1072,7 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
               </TabsContent>
               <TabsContent value="installments" className="mt-0">
                 <ResultsCard title="Parcelas a Pagar" count={payableInstallmentRows.length} totals={payInstTotals}>
-                  <table className="w-full"><thead><tr><th className="w-10 bg-muted/50"><input type="checkbox" aria-label="Selecionar parcelas da página" className="h-4 w-4 accent-primary" checked={payInstOnPage.length > 0 && payInstOnPage.every(id => selectedPayInst.includes(id))} onChange={e => setSelectedPayInst(e.target.checked ? Array.from(new Set([...selectedPayInst, ...payInstOnPage])) : selectedPayInst.filter(id => !payInstOnPage.includes(id)))} /></th>{plainHead("Credor")}{plainHead("Empresa", "hidden lg:table-cell")}{plainHead("Descrição", "hidden md:table-cell")}{plainHead("Parcela")}{plainHead("Valor", "text-right")}{plainHead("Vencimento")}{plainHead("Pagamento")}{plainHead("Status")}</tr></thead><tbody>
+                  <table className="w-full"><thead><tr><th className="w-10 bg-muted/50"><input type="checkbox" aria-label="Selecionar parcelas da página" className="h-4 w-4 accent-primary" checked={payInstOnPage.length > 0 && payInstOnPage.every(id => selectedPayInst.includes(id))} onChange={e => setSelectedPayInst(e.target.checked ? Array.from(new Set([...selectedPayInst, ...payInstOnPage])) : selectedPayInst.filter(id => !payInstOnPage.includes(id)))} /></th>{sortHead("Credor", "supplier", payInstSort, setPayInstSort)}{plainHead("Empresa", "hidden lg:table-cell")}{plainHead("Descrição", "hidden md:table-cell")}{plainHead("Parcela")}{sortHead("Valor", "amount", payInstSort, setPayInstSort, "text-right")}{sortHead("Vencimento", "dueDate", payInstSort, setPayInstSort)}{plainHead("Pagamento")}{sortHead("Status", "status", payInstSort, setPayInstSort)}</tr></thead><tbody>
                     {payInstPage.pageItems.map(row => <tr key={row.key} className="border-b border-border/50 hover:bg-muted/30"><td>{row.inst.status !== "paid" && <input type="checkbox" aria-label="Selecionar parcela" className="h-4 w-4 accent-primary" checked={selectedPayInst.includes(row.inst.id)} onChange={() => toggle(selectedPayInst, setSelectedPayInst, row.inst.id)} />}</td><td className="font-medium text-foreground">{row.pay.supplier}</td><td className="hidden text-muted-foreground lg:table-cell">{companyName(row.pay.companyId, row.pay.companyName)}</td><td className="hidden max-w-[260px] truncate text-xs uppercase text-muted-foreground md:table-cell">{row.pay.description}</td><td className="text-muted-foreground">{row.inst.installmentNumber}/{row.count}</td><td className="whitespace-nowrap text-right font-semibold text-foreground">{formatCurrency(row.inst.amount)}</td><td className="whitespace-nowrap text-muted-foreground">{fmtDate(row.inst.dueDate)}</td><td className="whitespace-nowrap text-muted-foreground">{fmtDate(row.inst.paidDate)}</td><td><StatusPill status={row.inst.status} /></td></tr>)}
                     {!loading && payableInstallmentRows.length === 0 && <EmptyRow text="Nenhuma parcela encontrada" span={9} />}
                   </tbody></table>
@@ -1121,7 +1115,7 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
               </TabsContent>
               <TabsContent value="installments" className="mt-0">
                 <ResultsCard title="Parcelas a Receber" count={receivableInstallments.length} totals={recInstTotals}>
-                  <table className="w-full"><thead><tr>{plainHead("Cliente")}{plainHead("Empresa", "hidden lg:table-cell")}{plainHead("Procedimento", "hidden md:table-cell")}{plainHead("Parcela")}{plainHead("Valor", "text-right")}{plainHead("Vencimento")}{plainHead("Status")}</tr></thead><tbody>
+                  <table className="w-full"><thead><tr>{sortHead("Cliente", "client", recInstSort, setRecInstSort)}{plainHead("Empresa", "hidden lg:table-cell")}{plainHead("Procedimento", "hidden md:table-cell")}{plainHead("Parcela")}{sortHead("Valor", "amount", recInstSort, setRecInstSort, "text-right")}{sortHead("Vencimento", "dueDate", recInstSort, setRecInstSort)}{sortHead("Status", "status", recInstSort, setRecInstSort)}</tr></thead><tbody>
                     {recInstPage.pageItems.map(row => <tr key={row.key} className="border-b border-border/50 hover:bg-muted/30"><td className="font-medium text-foreground">{row.rec.patientName}</td><td className="hidden text-muted-foreground lg:table-cell">{companyName(row.rec.companyId, row.rec.companyName)}</td><td className="hidden text-muted-foreground md:table-cell">{row.rec.procedure}</td><td className="text-muted-foreground">{row.number}/{row.count}</td><td className="whitespace-nowrap text-right font-semibold text-foreground">{formatCurrency(row.amount)}</td><td className="whitespace-nowrap text-muted-foreground">{fmtDate(row.dueDate)}</td><td><StatusPill status={row.rec.status} /></td></tr>)}
                     {!loading && receivableInstallments.length === 0 && <EmptyRow text="Nenhuma parcela encontrada" span={7} />}
                   </tbody></table>

@@ -13,8 +13,8 @@ import { ArrowDownCircle, ArrowUpCircle, Edit2, Plus, Trash2 } from "lucide-reac
 import { toast } from "sonner";
 
 type Account = { id: string; company_id: string | null; bank_name: string; account_number: string; initial_date: string; initial_balance: number; active: boolean };
-type Movement = { supplier_id: string | null; supplier_name: string | null; category_id: string | null; id: string; type: "income" | "expense"; description: string; amount: number; movement_date: string; category: string | null; notes: string | null };
-type Entry = { id: string; type: "income" | "expense"; description: string; amount: number; date: string; source: string; manual?: Movement };
+type Movement = { supplier_id: string | null; supplier_name: string | null; category_id: string | null; id: string; type: "income" | "expense"; description: string; amount: number; movement_date: string; category: string | null; notes: string | null; created_at?: string };
+type Entry = { id: string; type: "income" | "expense"; description: string; amount: number; date: string; source: string; createdAt?: string; manual?: Movement };
 const today = () => new Date().toISOString().slice(0, 10);
 const empty = () => ({ type: "income" as "income" | "expense", description: "", amount: "", date: today(), supplierId: "", supplierName: "", categoryId: "", category: "", notes: "" });
 
@@ -69,10 +69,10 @@ export function CashControl() {
     if (manual.error || rec.error || pay.error || active.error) { setError(true); toast.error("Não foi possível carregar os movimentos."); return; }
     setSession(active.data || null);
     setEntries([
-      ...(manual.data || []).map((m: Movement) => ({ id: m.id, type: m.type, description: [m.supplier_name, m.description].filter(Boolean).join(" · "), amount: Number(m.amount), date: m.movement_date, source: m.category || "Lançamento de caixa", manual: m })),
-      ...(rec.data || []).map((r: any) => ({ id: `rec-${r.id}`, type: "income", description: `${r.patient_name} · ${r.procedure_name}`, amount: Number(r.amount), date: r.paid_date, source: "Contas a Receber" })),
-      ...(pay.data || []).map((p: any) => ({ id: `pay-${p.id}`, type: "expense", description: `${p.payables.supplier} · ${p.payables.description} · ${p.installment_number}ª parcela`, amount: Number(p.paid_amount ?? p.amount), date: p.paid_date, source: "Contas a Pagar" })),
-    ].filter(e => Boolean(e.date)).sort((a, b) => b.date.localeCompare(a.date)));
+      ...(manual.data || []).map((m: Movement) => ({ id: m.id, type: m.type, description: [m.supplier_name, m.description].filter(Boolean).join(" · "), amount: Number(m.amount), date: m.movement_date, source: m.category || "Lançamento de caixa", createdAt: m.created_at, manual: m })),
+      ...(rec.data || []).map((r: any) => ({ id: `rec-${r.id}`, type: "income", description: `${r.patient_name} · ${r.procedure_name}`, amount: Number(r.amount), date: r.paid_date, source: "Contas a Receber", createdAt: r.created_at })),
+      ...(pay.data || []).map((p: any) => ({ id: `pay-${p.id}`, type: "expense", description: `${p.payables.supplier} · ${p.payables.description} · ${p.installment_number}ª parcela`, amount: Number(p.paid_amount ?? p.amount), date: p.paid_date, source: "Contas a Pagar", createdAt: p.created_at })),
+    ].filter(e => Boolean(e.date)).sort((a, b) => b.date.localeCompare(a.date) || (b.createdAt || "").localeCompare(a.createdAt || "")));
   };
   useEffect(() => {
     let current = true;
