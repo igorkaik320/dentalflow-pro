@@ -57,7 +57,16 @@ export default function AccountStatementPage() {
     setEntries([
       ...(manual.data || []).map((m: any) => ({ id: m.id, type: m.type, date: m.movement_date, description: m.description, party: m.supplier_name || "", source: m.category || "Lançamento de caixa", amount: Number(m.amount) })),
       ...(rec.data || []).map((r: any) => ({ id: `r${r.id}`, type: "income" as const, date: r.paid_date, description: r.procedure_name, party: r.patient_name, source: "Contas a Receber", amount: Number(r.amount) })),
-      ...(pay.data || []).map((p: any) => ({ id: `p${p.id}`, type: "expense" as const, date: p.paid_date, description: `${p.payables.description} · ${p.installment_number}ª parcela`, party: p.payables.supplier, source: "Contas a Pagar", amount: Number(p.paid_amount ?? p.amount) })),
+      ...(pay.data || []).flatMap((p: any) => {
+        const j = Number(p.juros_multa || 0), a = Number(p.acrescimo || 0);
+        const base = { type: "expense" as const, date: p.paid_date, party: p.payables.supplier };
+        const desc = `${p.payables.description} · ${p.installment_number}ª parcela`;
+        return [
+          { ...base, id: `p${p.id}`, description: desc, source: "Contas a Pagar", amount: Number(p.paid_amount ?? p.amount) - j - a },
+          ...(j > 0 ? [{ ...base, id: `pj${p.id}`, description: `Juros · ${desc}`, source: "Juros", amount: j }] : []),
+          ...(a > 0 ? [{ ...base, id: `pa${p.id}`, description: `Acréscimos · ${desc}`, source: "Acréscimos", amount: a }] : []),
+        ];
+      }),
     ].filter(e => e.date && e.date >= account.initial_date).sort((a, b) => a.date.localeCompare(b.date)));
   };
 

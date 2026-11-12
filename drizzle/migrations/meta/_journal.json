@@ -120,6 +120,13 @@
       "when": 1794409946172,
       "tag": "0016_bind_clinical_attachment_mutations_to_owner",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1794494803651,
+      "tag": "0017_installment_additions",
+      "breakpoints": true
     }
   ]
 }

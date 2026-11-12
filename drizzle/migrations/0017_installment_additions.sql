@@ -1,0 +1,1 @@
+ALTER TABLE public.payable_installments ADD COLUMN IF NOT EXISTS acrescimo numeric NOT NULL DEFAULT 0;

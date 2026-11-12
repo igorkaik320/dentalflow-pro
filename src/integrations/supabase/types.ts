@@ -883,6 +883,7 @@ export type Database = {
       }
       payable_installments: {
         Row: {
+          acrescimo: number
           amount: number
           bank_account_id: string | null
           clinic_id: string
@@ -902,6 +903,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          acrescimo?: number
           amount?: number
           bank_account_id?: string | null
           clinic_id: string
@@ -921,6 +923,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          acrescimo?: number
           amount?: number
           bank_account_id?: string | null
           clinic_id?: string

@@ -288,6 +288,8 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
   const [settleOpen, setSettleOpen] = useState(false);
   const [settleAccount, setSettleAccount] = useState("");
   const [settleDate, setSettleDate] = useState(today());
+  const [settleJuros, setSettleJuros] = useState("");
+  const [settleAcrescimo, setSettleAcrescimo] = useState("");
   const [settling, setSettling] = useState(false);
   const [companies, setCompanies] = useState<CompanyRow[]>([]);
   const [recView, setRecView] = useState<"entries" | "installments">("entries");
@@ -502,8 +504,11 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
       } else {
         const toPay = (targets as PayableWithInstallments[]).flatMap((p) => p.installments.filter((i) => i.status !== "paid" && (!byInstallment || selectedPayInst.includes(i.id))));
         if (!toPay.length) { toast.error("As parcelas selecionadas ja estao baixadas."); return; }
-        for (const inst of toPay) {
-          const { error } = await db.from("payable_installments").update({ status: "paid", paid_date: settleDate, paid_amount: inst.amount, bank_account_id: settleAccount }).eq("id", inst.id).eq("clinic_id", clinic.id);
+        const juros = parseCurrencyInput(settleJuros), acrescimo = parseCurrencyInput(settleAcrescimo);
+        for (const [idx, inst] of toPay.entries()) {
+          // Juros e acréscimos informados na baixa são lançados uma vez, na primeira parcela do lote.
+          const j = idx === 0 ? juros : 0, a = idx === 0 ? acrescimo : 0;
+          const { error } = await db.from("payable_installments").update({ status: "paid", paid_date: settleDate, paid_amount: Number(inst.amount) + j + a, juros_multa: j, acrescimo: a, bank_account_id: settleAccount }).eq("id", inst.id).eq("clinic_id", clinic.id);
           if (error) { toast.error("Nao foi possivel baixar uma das parcelas."); return; }
         }
         const paidIds = new Set(toPay.map(i => i.id));
@@ -797,7 +802,7 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
     </th>
   );
   const plainHead = (label: string, className = "") => <th className={`whitespace-nowrap bg-muted/50 text-xs font-medium text-muted-foreground ${className}`}>{label}</th>;
-  const selectionBar = (count: number, onClear: () => void) => count > 0 && <div className="flex items-center gap-2"><span className="text-xs text-muted-foreground">{count} selecionado(s)</span><Button size="sm" variant="outline" onClick={onClear}>Limpar</Button><Button size="sm" onClick={() => { setSettleDate(today()); setSettleOpen(true); }}><CheckCircle2 className="mr-1 h-4 w-4" />Baixar</Button></div>;
+  const selectionBar = (count: number, onClear: () => void) => count > 0 && <div className="flex items-center gap-2"><span className="text-xs text-muted-foreground">{count} selecionado(s)</span><Button size="sm" variant="outline" onClick={onClear}>Limpar</Button><Button size="sm" onClick={() => { setSettleDate(today()); setSettleJuros(""); setSettleAcrescimo(""); setSettleOpen(true); }}><CheckCircle2 className="mr-1 h-4 w-4" />Baixar</Button></div>;
   const fmtDate = (d?: string) => d ? new Date(d + "T12:00:00").toLocaleDateString("pt-BR") : "-";
 
   const [exporting, setExporting] = useState(false);
@@ -1134,7 +1139,11 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
         <ConfirmDialog open={!!deleteRecId} onOpenChange={() => setDeleteRecId(null)} title="Excluir Conta a Receber" description="Tem certeza que deseja excluir esta conta?" onConfirm={() => deleteRecId && deleteRecord("receivables", deleteRecId)} />
         <ConfirmDialog open={!!deletePayId} onOpenChange={() => setDeletePayId(null)} title="Excluir Conta a Pagar" description="Tem certeza que deseja excluir esta conta e suas parcelas?" onConfirm={() => deletePayId && deleteRecord("payables", deletePayId)} />
       </div>
-    <Dialog open={settleOpen} onOpenChange={setSettleOpen}><DialogContent className="max-w-md"><DialogHeader><DialogTitle>Baixar lancamentos</DialogTitle></DialogHeader><div className="space-y-4"><p className="text-sm text-muted-foreground">{section === "receivables" ? selectedRec.length : selectedPay.length} lancamento(s) selecionado(s)</p><div className="space-y-1.5"><Label>Conta corrente</Label><Select value={settleAccount} onValueChange={setSettleAccount}><SelectTrigger><SelectValue placeholder="Selecione a conta" /></SelectTrigger><SelectContent>{bankAccounts.filter(a => a.active && a.companyId && (section === "receivables" ? receivables.filter(r => selectedRec.includes(r.id)).every(r => r.companyId === a.companyId) : payables.filter(p => selectedPay.includes(p.id)).every(p => p.companyId === a.companyId))).map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}</SelectContent></Select>{bankAccounts.length === 0 && <p className="text-xs text-muted-foreground">Cadastre uma conta em Cadastros › Contas Correntes.</p>}</div><div className="space-y-1.5"><Label>Data da baixa</Label><Input type="date" value={settleDate} onChange={(e) => setSettleDate(e.target.value)} /></div><div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setSettleOpen(false)}>Cancelar</Button><Button onClick={settleSelected} disabled={settling}>{settling ? "Baixando..." : "Baixar"}</Button></div></div></DialogContent></Dialog>
+    <Dialog open={settleOpen} onOpenChange={setSettleOpen}><DialogContent className="max-w-md"><DialogHeader><DialogTitle>Baixar lancamentos</DialogTitle></DialogHeader><div className="space-y-4"><p className="text-sm text-muted-foreground">{section === "receivables" ? selectedRec.length : selectedPay.length} lancamento(s) selecionado(s)</p><div className="space-y-1.5"><Label>Conta corrente</Label><Select value={settleAccount} onValueChange={setSettleAccount}><SelectTrigger><SelectValue placeholder="Selecione a conta" /></SelectTrigger><SelectContent>{bankAccounts.filter(a => a.active && a.companyId && (section === "receivables" ? receivables.filter(r => selectedRec.includes(r.id)).every(r => r.companyId === a.companyId) : payables.filter(p => selectedPay.includes(p.id)).every(p => p.companyId === a.companyId))).map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}</SelectContent></Select>{bankAccounts.length === 0 && <p className="text-xs text-muted-foreground">Cadastre uma conta em Cadastros › Contas Correntes.</p>}</div><div className="space-y-1.5"><Label>Data da baixa</Label><Input type="date" value={settleDate} onChange={(e) => setSettleDate(e.target.value)} /></div>{section !== "receivables" && (() => {
+      const base = payables.flatMap(p => p.installments).filter(i => i.status !== "paid" && (payView === "installments" ? selectedPayInst.includes(i.id) : selectedPay.includes(payables.find(p => p.installments.includes(i))?.id || ""))).reduce((s, i) => s + Number(i.amount), 0);
+      const total = base + parseCurrencyInput(settleJuros) + parseCurrencyInput(settleAcrescimo);
+      return <><div className="grid grid-cols-2 gap-3"><div className="space-y-1.5"><Label>Juros</Label><Input inputMode="numeric" placeholder="R$ 0,00" value={settleJuros} onChange={(e) => setSettleJuros(e.target.value ? formatCurrency(parseCurrencyInput(e.target.value)) : "")} /></div><div className="space-y-1.5"><Label>Acréscimos</Label><Input inputMode="numeric" placeholder="R$ 0,00" value={settleAcrescimo} onChange={(e) => setSettleAcrescimo(e.target.value ? formatCurrency(parseCurrencyInput(e.target.value)) : "")} /></div></div><div className="rounded-md bg-muted/50 p-3 text-sm"><div className="flex justify-between text-muted-foreground"><span>Valor das parcelas</span><span>{formatCurrency(base)}</span></div><div className="mt-1 flex justify-between font-semibold"><span>Total da baixa</span><span>{formatCurrency(total)}</span></div><p className="mt-1 text-xs text-muted-foreground">Juros e acréscimos entram nas categorias Juros e Acréscimos.</p></div></>;
+    })()}<div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setSettleOpen(false)}>Cancelar</Button><Button onClick={settleSelected} disabled={settling}>{settling ? "Baixando..." : "Baixar"}</Button></div></div></DialogContent></Dialog>
     </ClinicLayout>
   );
 }
