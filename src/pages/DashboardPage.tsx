@@ -136,7 +136,8 @@ function payableExpenseRows(payables: PayableRow[]) {
   return payables.flatMap((payable) => {
     if (payable.payable_installments?.length) {
       return payable.payable_installments.map((installment) => ({
-        amount: installment.status === "paid" ? (installment.paid_amount ?? installment.amount) : installment.amount,
+        // Juros/acréscimos já viram lançamentos próprios; não contar duas vezes.
+        amount: installment.status === "paid" ? (installment.paid_amount ?? installment.amount) - Number((installment as any).juros_multa || 0) - Number((installment as any).acrescimo || 0) : installment.amount,
         status: installment.status,
         due_date: installment.due_date,
         paid_date: installment.paid_date,
@@ -174,7 +175,7 @@ export default function DashboardPage() {
     setLoading(true);
     const [receivableRes, payableRes, patientRes] = await Promise.all([
       db.from("receivables").select("id, amount, status, due_date, paid_date, professional_name").eq("clinic_id", clinic.id),
-      db.from("payables").select("id, amount, status, due_date, paid_date, payable_installments(id, amount, paid_amount, status, due_date, paid_date)").eq("clinic_id", clinic.id),
+      db.from("payables").select("id, amount, status, due_date, paid_date, payable_installments(id, amount, paid_amount, juros_multa, acrescimo, status, due_date, paid_date)").eq("clinic_id", clinic.id),
       db.from("patients").select("id, created_at").eq("clinic_id", clinic.id),
     ]);
     setLoading(false);
