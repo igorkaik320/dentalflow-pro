@@ -797,7 +797,7 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
 
   const [exporting, setExporting] = useState(false);
   const statusText: Record<string, string> = { open: "Aberto", paid: "Pago", overdue: "Atrasado", cancelled: "Cancelado" };
-  const exportPdf = async (kind: "payables" | "receivables") => {
+  const exportPdf = async (kind: "payables" | "receivables", paidOnly = false) => {
     if (exporting) return;
     const isPay = kind === "payables";
     const view = isPay ? payView : recView;
@@ -807,7 +807,12 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
 
       type PdfRow = { date: string; empresa: string; entidade: string; detalhe: string; parcela: string; valor: number; status: string };
       let rows: PdfRow[];
-      if (isPay && view === "entries") {
+      if (paidOnly) {
+        // Contas pagas: considera a data de pagamento da parcela no período filtrado
+        rows = payBase.flatMap(p => p.installments.map(inst => ({ p, inst, count: p.installments.length })))
+          .filter(({ inst }) => inst.status === "paid" && inst.paidDate && (!payApplied.start && !payApplied.end ? true : isWithinPeriod(inst.paidDate, payApplied.start, payApplied.end)))
+          .map(({ p, inst, count }) => ({ date: inst.paidDate || "", empresa: companyName(p.companyId, p.companyName), entidade: p.supplier, detalhe: p.description, parcela: `${inst.installmentNumber}/${count}`, valor: inst.paidAmount ?? (inst.amount + (inst.juros || 0) + (inst.acrescimo || 0)), status: "paid" }));
+      } else if (isPay && view === "entries") {
         rows = filteredPayables.map(p => ({ date: p.dueDate || "", empresa: companyName(p.companyId, p.companyName), entidade: p.supplier, detalhe: p.description, parcela: `${p.installments.filter(i => i.status === "paid").length}/${p.installments.length || p.installmentsCount || 1}`, valor: p.amount + extrasOf(p.installments).j + extrasOf(p.installments).a, status: p.status }));
       } else if (isPay) {
         rows = payableInstallmentRows.map(r => ({ date: r.inst.dueDate || "", empresa: companyName(r.pay.companyId, r.pay.companyName), entidade: r.pay.supplier, detalhe: r.pay.description, parcela: `${r.inst.installmentNumber}/${r.count}`, valor: r.inst.amount + (r.inst.juros || 0) + (r.inst.acrescimo || 0), status: r.inst.status }));
@@ -840,7 +845,7 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
       pdf.setFontSize(14);
       pdf.setTextColor(30, 30, 30);
       pdf.setFont("helvetica", "bold");
-      pdf.text(isPay ? "CONTAS A PAGAR" : "CONTAS A RECEBER", pageWidth / 2, y, { align: "center" });
+      pdf.text(paidOnly ? "CONTAS PAGAS" : isPay ? "CONTAS A PAGAR" : "CONTAS A RECEBER", pageWidth / 2, y, { align: "center" });
       if (clinic.name) {
         y += 5;
         pdf.setFontSize(10);
@@ -853,6 +858,10 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
       pdf.text(`Gerado em: ${new Date().toLocaleDateString("pt-BR")}`, marginRight, y, { align: "right" });
       y += clinic.name ? 4 : 3;
 
+      if (paidOnly && (payApplied.start || payApplied.end)) {
+        pdf.text(`Pagamentos de ${payApplied.start ? fmtDate(payApplied.start) : "início"} a ${payApplied.end ? fmtDate(payApplied.end) : "hoje"}`, marginLeft, y);
+        y += 4;
+      }
       pdf.setDrawColor(200, 200, 200);
       pdf.line(marginLeft, y, marginRight, y);
       y += 5;
@@ -898,7 +907,7 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
         pdf.setFontSize(7.5);
         pdf.setFont("helvetica", "bold");
         pdf.setTextColor(80, 80, 80);
-        pdf.text("Vencimento", cols.venc.x, y);
+        pdf.text(paidOnly ? "Pagamento" : "Vencimento", cols.venc.x, y);
         pdf.text("Empresa", cols.empresa.x, y);
         pdf.text(entidadeLabel, cols.entidade.x, y);
         pdf.text(detalheLabel, cols.detalhe.x, y);
@@ -1016,7 +1025,7 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
       pdf.text(formatCurrency(grandTotal), marginRight, y, { align: "right" });
       pdf.setLineWidth(0.2);
 
-      pdf.save(`${isPay ? "contas_a_pagar" : "contas_a_receber"}_${view === "entries" ? "contas" : "parcelas"}_${new Date().toISOString().slice(0, 10)}.pdf`);
+      pdf.save(paidOnly ? `contas_pagas_${new Date().toISOString().slice(0, 10)}.pdf` : `${isPay ? "contas_a_pagar" : "contas_a_receber"}_${view === "entries" ? "contas" : "parcelas"}_${new Date().toISOString().slice(0, 10)}.pdf`);
       toast.success("PDF gerado com sucesso.");
     } catch (e: any) {
       toast.error(e?.message || "Não foi possível gerar o PDF.");
@@ -1036,7 +1045,7 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
             <Tabs value={payView} onValueChange={v => setPayView(v as "entries" | "installments")} className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <TabsList><TabsTrigger value="entries" className="px-4">Contas</TabsTrigger><TabsTrigger value="installments" className="px-4">Parcelas</TabsTrigger></TabsList>
-                <div className="flex flex-wrap items-center gap-2">{payView === "installments" ? selectionBar(selectedPayInst.length, () => setSelectedPayInst([])) : selectionBar(selectedPay.length, () => setSelectedPay([]))}{pdfButton("payables")}<Button size="sm" onClick={() => openPay()}><Plus className="mr-1 h-4 w-4" />Novo</Button></div>
+                <div className="flex flex-wrap items-center gap-2">{payView === "installments" ? selectionBar(selectedPayInst.length, () => setSelectedPayInst([])) : selectionBar(selectedPay.length, () => setSelectedPay([]))}{pdfButton("payables")}<Button size="sm" variant="outline" onClick={() => exportPdf("payables", true)} disabled={exporting}><FileDown className="mr-1 h-4 w-4" />Contas Pagas</Button><Button size="sm" onClick={() => openPay()}><Plus className="mr-1 h-4 w-4" />Novo</Button></div>
               </div>
               <TabsContent value="entries" className="mt-0">
                 <ResultsCard title="Contas a Pagar" count={filteredPayables.length} totals={payEntryTotals}>
