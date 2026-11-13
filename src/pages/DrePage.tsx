@@ -61,13 +61,12 @@ export default function DrePage() {
   };
 
   const companyLabel = companyId === "all" ? "Todas as empresas" : companies.find(c => c.id === companyId)?.name || "";
-  const pct = (v: number) => report?.totalIncome ? `${((v / report.totalIncome) * 100).toFixed(1)}%` : "-";
   const rows = (r: Report) => [
-    ["RECEITAS", formatCurrency(r.totalIncome), pct(r.totalIncome)],
-    ...r.income.map(l => [`   ${l.category}`, formatCurrency(l.amount), pct(l.amount)]),
-    ["DESPESAS", formatCurrency(r.totalExpense), pct(r.totalExpense)],
-    ...r.expense.map(l => [`   ${l.category}`, formatCurrency(l.amount), pct(l.amount)]),
-    ["RESULTADO", formatCurrency(r.result), pct(r.result)],
+    ["RECEITAS", formatCurrency(r.totalIncome)],
+    ...r.income.map(l => [`   ${l.category}`, formatCurrency(l.amount)]),
+    ["DESPESAS", formatCurrency(r.totalExpense)],
+    ...r.expense.map(l => [`   ${l.category}`, formatCurrency(l.amount)]),
+    ["RESULTADO", formatCurrency(r.result)],
   ];
 
   const exportPdf = () => {
@@ -75,20 +74,20 @@ export default function DrePage() {
     const doc = new jsPDF();
     doc.setFontSize(14); doc.text("DRE - Demonstrativo de Resultado", 14, 15);
     doc.setFontSize(9); doc.text(`${clinic.name} · ${companyLabel} · ${br(start)} a ${br(end)}`, 14, 21);
-    autoTable(doc, { startY: 26, styles: { fontSize: 9 }, headStyles: { fillColor: [220, 220, 220], textColor: 20 }, head: [["Classe financeira", "Valor", "% Receita"]], body: rows(report),
+    autoTable(doc, { startY: 26, styles: { fontSize: 9 }, headStyles: { fillColor: [220, 220, 220], textColor: 20 }, head: [["Classe financeira", "Valor"]], body: rows(report),
       didParseCell: d => { if (d.section === "body" && !String(d.row.raw && (d.row.raw as string[])[0]).startsWith(" ")) d.cell.styles.fontStyle = "bold"; } });
     doc.save(`dre-${start}-${end}.pdf`);
   };
   const exportExcel = () => {
     if (!report) return;
-    const ws = XLSX.utils.aoa_to_sheet([["DRE"], [`${clinic.name} · ${companyLabel}`], [`Período: ${br(start)} a ${br(end)}`], [], ["Classe financeira", "Valor", "% Receita"], ...rows(report)]);
-    ws["!cols"] = [{ wch: 40 }, { wch: 16 }, { wch: 12 }];
+    const ws = XLSX.utils.aoa_to_sheet([["DRE"], [`${clinic.name} · ${companyLabel}`], [`Período: ${br(start)} a ${br(end)}`], [], ["Classe financeira", "Valor"], ...rows(report)]);
+    ws["!cols"] = [{ wch: 40 }, { wch: 16 }];
     const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "DRE"); XLSX.writeFile(wb, `dre-${start}-${end}.xlsx`);
   };
 
   const Section = ({ title, lines, total, tone }: { title: string; lines: Line[]; total: number; tone: string }) => <>
-    <tr className="border-t bg-muted/40 font-semibold"><td className="p-3">{title}</td><td className={`p-3 text-right ${tone}`}>{formatCurrency(total)}</td><td className="p-3 text-right">{pct(total)}</td></tr>
-    {lines.length === 0 ? <tr className="border-t"><td colSpan={3} className="p-3 pl-8 text-muted-foreground">Nenhum valor no período.</td></tr> : lines.map(l => <tr key={l.category} className="border-t"><td className="p-3 pl-8">{l.category}</td><td className="p-3 text-right">{formatCurrency(l.amount)}</td><td className="p-3 text-right text-muted-foreground">{pct(l.amount)}</td></tr>)}
+    <tr className="border-t bg-muted/40 font-semibold"><td className="p-3">{title}</td><td className={`p-3 text-right ${tone}`}>{formatCurrency(total)}</td></tr>
+    {lines.length === 0 ? <tr className="border-t"><td colSpan={2} className="p-3 pl-8 text-muted-foreground">Nenhum valor no período.</td></tr> : lines.map(l => <tr key={l.category} className="border-t"><td className="p-3 pl-8">{l.category}</td><td className="p-3 text-right">{formatCurrency(l.amount)}</td></tr>)}
   </>;
 
   return (
@@ -106,11 +105,11 @@ export default function DrePage() {
         </div>
       </form>
       {report && <div className="saas-panel overflow-x-auto"><table className="w-full text-sm">
-        <thead className="bg-muted/50 text-left text-xs text-muted-foreground"><tr><th className="p-3">Classe financeira</th><th className="p-3 text-right">Valor</th><th className="p-3 text-right">% Receita</th></tr></thead>
+        <thead className="bg-muted/50 text-left text-xs text-muted-foreground"><tr><th className="p-3">Classe financeira</th><th className="p-3 text-right">Valor</th></tr></thead>
         <tbody>
           <Section title="Receitas" lines={report.income} total={report.totalIncome} tone="text-success" />
           <Section title="Despesas" lines={report.expense} total={report.totalExpense} tone="text-destructive" />
-          <tr className="border-t-2 font-bold"><td className="p-3">Resultado</td><td className={`p-3 text-right ${report.result >= 0 ? "text-success" : "text-destructive"}`}>{formatCurrency(report.result)}</td><td className="p-3 text-right">{pct(report.result)}</td></tr>
+          <tr className="border-t-2 font-bold"><td className="p-3">Resultado</td><td className={`p-3 text-right ${report.result >= 0 ? "text-success" : "text-destructive"}`}>{formatCurrency(report.result)}</td></tr>
         </tbody></table></div>}
     </ClinicLayout>
   );
