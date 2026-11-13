@@ -181,8 +181,7 @@ function mapReceivable(row: any): Receivable {
 
 const extrasOf = (list: PayableInstallment[]) => list.reduce((s, i) => ({ j: s.j + (i.juros || 0), a: s.a + (i.acrescimo || 0) }), { j: 0, a: 0 });
 function ValueCell({ base, j, a }: { base: number; j: number; a: number }) {
-  if (!j && !a) return <>{formatCurrency(base)}</>;
-  return <span className="inline-flex flex-col items-end leading-tight">{formatCurrency(base + j + a)}<span className="text-[10px] font-normal text-muted-foreground">orig. {formatCurrency(base)}{j ? ` · juros ${formatCurrency(j)}` : ""}{a ? ` · acrésc. ${formatCurrency(a)}` : ""}</span></span>;
+  return <>{formatCurrency(base + j + a)}</>;
 }
 
 function mapInstallment(row: any): PayableInstallment {
@@ -485,8 +484,8 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
 
   const recEntryTotals = useMemo(() => { const total = filteredReceivables.reduce((s, r) => s + r.amount, 0); const paid = filteredReceivables.filter(r => r.status === "paid").reduce((s, r) => s + r.amount, 0); return { total, paid, open: total - paid }; }, [filteredReceivables]);
   const recInstTotals = useMemo(() => { const total = receivableInstallments.reduce((s, r) => s + r.amount, 0); const paid = receivableInstallments.filter(r => r.rec.status === "paid").reduce((s, r) => s + r.amount, 0); return { total, paid, open: total - paid }; }, [receivableInstallments]);
-  const payEntryTotals = useMemo(() => { const total = filteredPayables.reduce((s, p) => s + p.amount, 0); const paid = filteredPayables.reduce((s, p) => s + (p.installments.length ? p.installments.filter(i => i.status === "paid").reduce((a, i) => a + (i.paidAmount ?? i.amount), 0) : p.status === "paid" ? p.amount : 0), 0); return { total, paid, open: Math.max(0, total - paid) }; }, [filteredPayables]);
-  const payInstTotals = useMemo(() => { const total = payableInstallmentRows.reduce((s, r) => s + r.inst.amount, 0); const paid = payableInstallmentRows.filter(r => r.inst.status === "paid").reduce((s, r) => s + (r.inst.paidAmount ?? r.inst.amount), 0); return { total, paid, open: Math.max(0, total - paid) }; }, [payableInstallmentRows]);
+  const payEntryTotals = useMemo(() => { const total = filteredPayables.reduce((s, p) => { const e = extrasOf(p.installments); return s + p.amount + e.j + e.a; }, 0); const paid = filteredPayables.reduce((s, p) => s + (p.installments.length ? p.installments.filter(i => i.status === "paid").reduce((a, i) => a + (i.paidAmount ?? i.amount), 0) : p.status === "paid" ? p.amount : 0), 0); return { total, paid, open: Math.max(0, total - paid) }; }, [filteredPayables]);
+  const payInstTotals = useMemo(() => { const total = payableInstallmentRows.reduce((s, r) => s + r.inst.amount + (r.inst.juros || 0) + (r.inst.acrescimo || 0), 0); const paid = payableInstallmentRows.filter(r => r.inst.status === "paid").reduce((s, r) => s + (r.inst.paidAmount ?? r.inst.amount), 0); return { total, paid, open: Math.max(0, total - paid) }; }, [payableInstallmentRows]);
 
   const toggle = (list: string[], set: (v: string[]) => void, id: string) => set(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
 
@@ -809,9 +808,9 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
       type PdfRow = { date: string; empresa: string; entidade: string; detalhe: string; parcela: string; valor: number; status: string };
       let rows: PdfRow[];
       if (isPay && view === "entries") {
-        rows = filteredPayables.map(p => ({ date: p.dueDate || "", empresa: companyName(p.companyId, p.companyName), entidade: p.supplier, detalhe: p.description, parcela: `${p.installments.filter(i => i.status === "paid").length}/${p.installments.length || p.installmentsCount || 1}`, valor: p.amount, status: p.status }));
+        rows = filteredPayables.map(p => ({ date: p.dueDate || "", empresa: companyName(p.companyId, p.companyName), entidade: p.supplier, detalhe: p.description, parcela: `${p.installments.filter(i => i.status === "paid").length}/${p.installments.length || p.installmentsCount || 1}`, valor: p.amount + extrasOf(p.installments).j + extrasOf(p.installments).a, status: p.status }));
       } else if (isPay) {
-        rows = payableInstallmentRows.map(r => ({ date: r.inst.dueDate || "", empresa: companyName(r.pay.companyId, r.pay.companyName), entidade: r.pay.supplier, detalhe: r.pay.description, parcela: `${r.inst.installmentNumber}/${r.count}`, valor: r.inst.amount, status: r.inst.status }));
+        rows = payableInstallmentRows.map(r => ({ date: r.inst.dueDate || "", empresa: companyName(r.pay.companyId, r.pay.companyName), entidade: r.pay.supplier, detalhe: r.pay.description, parcela: `${r.inst.installmentNumber}/${r.count}`, valor: r.inst.amount + (r.inst.juros || 0) + (r.inst.acrescimo || 0), status: r.inst.status }));
       } else if (view === "entries") {
         rows = filteredReceivables.map(r => ({ date: r.dueDate || "", empresa: companyName(r.companyId, r.companyName), entidade: r.patientName, detalhe: r.procedure, parcela: r.installments > 1 ? `1/${r.installments}` : "1/1", valor: r.amount, status: r.status }));
       } else {

@@ -49,9 +49,7 @@ export default function DrePage() {
     (p.data || []).forEach((x: any) => {
       // Lançamentos antigos gerados automaticamente de juros já estão na parcela de origem.
       if (String(x.payables?.source_notes || "").startsWith("settlement_extra")) return;
-      add(exp, x.payables?.category, Number(x.amount));
-      add(exp, "Juros", Number(x.juros_multa || 0));
-      add(exp, "Acréscimos", Number(x.acrescimo || 0));
+      add(exp, x.payables?.category, Number(x.amount) + Number(x.juros_multa || 0) + Number(x.acrescimo || 0));
     });
     (c.data || []).forEach((x: any) => add(x.type === "income" ? inc : exp, x.category, Number(x.amount)));
     const lines = (m: Map<string, number>) => [...m].map(([category, amount]) => ({ category, amount })).sort((a, b) => b.amount - a.amount);
