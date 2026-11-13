@@ -18,6 +18,7 @@ const groups: { key: string; label: string; icon: typeof User; items: MenuItem[]
   { key: "financial", label: "Financeiro", icon: CircleDollarSign, items: [
     { title: "Contas a Receber", url: "/financeiro/receber", icon: ArrowUpCircle, module: "financial" },
     { title: "Contas a Pagar", url: "/financeiro/pagar", icon: ArrowDownCircle, module: "financial" },
+    { title: "Contas Pagas", url: "/financeiro/pagas", icon: ArrowDownCircle, module: "financial" },
     { title: "Controle de Caixa", url: "/financeiro/caixa", icon: Wallet, module: "financial" },
     { title: "Comissões", url: "/financeiro/comissoes", icon: CircleDollarSign, module: "financial" },
     { title: "Extrato de Conta", url: "/financeiro/extrato", icon: Landmark, module: "financial" },
