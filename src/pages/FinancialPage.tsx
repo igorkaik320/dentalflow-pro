@@ -179,6 +179,12 @@ function mapReceivable(row: any): Receivable {
   } as any;
 }
 
+const extrasOf = (list: PayableInstallment[]) => list.reduce((s, i) => ({ j: s.j + (i.juros || 0), a: s.a + (i.acrescimo || 0) }), { j: 0, a: 0 });
+function ValueCell({ base, j, a }: { base: number; j: number; a: number }) {
+  if (!j && !a) return <>{formatCurrency(base)}</>;
+  return <span className="inline-flex flex-col items-end leading-tight">{formatCurrency(base + j + a)}<span className="text-[10px] font-normal text-muted-foreground">orig. {formatCurrency(base)}{j ? ` · juros ${formatCurrency(j)}` : ""}{a ? ` · acrésc. ${formatCurrency(a)}` : ""}</span></span>;
+}
+
 function mapInstallment(row: any): PayableInstallment {
   return {
     id: row.id,
@@ -188,6 +194,8 @@ function mapInstallment(row: any): PayableInstallment {
     dueDate: row.due_date,
     paidDate: row.paid_date || undefined,
     paidAmount: row.paid_amount == null ? undefined : Number(row.paid_amount),
+    juros: Number(row.juros_multa || 0),
+    acrescimo: Number(row.acrescimo || 0),
     status: normalizeInstallmentStatus(row.status || "open", row.due_date),
     notes: row.notes || "",
     bankAccountId: row.bank_account_id || undefined,
@@ -1047,7 +1055,7 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
                         <td className="hidden text-xs text-muted-foreground xl:table-cell">{p.category || "-"}</td>
                         <td className="hidden max-w-[260px] truncate text-xs uppercase text-muted-foreground md:table-cell" title={p.description}>{p.description}</td>
                         <td className="text-muted-foreground">{paidCount}/{count}</td>
-                        <td className="whitespace-nowrap text-right font-semibold text-foreground">{formatCurrency(p.amount)}</td>
+                        <td className="whitespace-nowrap text-right font-semibold text-foreground">{(() => { const e = extrasOf(p.installments); return <ValueCell base={p.amount} j={e.j} a={e.a} />; })()}</td>
                         <td className="whitespace-nowrap text-muted-foreground">{fmtDate(p.dueDate)}</td>
                         <td>{paidCount > 0 && paidCount < count ? <StatusPill status="partial" /> : <StatusSelect value={p.status as FinancialStatus} onChange={(status) => updatePayableStatus(p, status)} />}</td>
                         <td className="text-right"><ActionButtons info={creatorInfo(p.id)} onEdit={() => openPay(p)} onDelete={() => setDeletePayId(p.id)} /></td>
@@ -1061,7 +1069,7 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
               <TabsContent value="installments" className="mt-0">
                 <ResultsCard title="Parcelas a Pagar" count={payableInstallmentRows.length} totals={payInstTotals}>
                   <table className="w-full"><thead><tr><th className="w-10 bg-muted/50"><input type="checkbox" aria-label="Selecionar parcelas da página" className="h-4 w-4 accent-primary" checked={payInstOnPage.length > 0 && payInstOnPage.every(id => selectedPayInst.includes(id))} onChange={e => setSelectedPayInst(e.target.checked ? Array.from(new Set([...selectedPayInst, ...payInstOnPage])) : selectedPayInst.filter(id => !payInstOnPage.includes(id)))} /></th>{sortHead("Credor", "supplier", payInstSort, setPayInstSort)}{plainHead("Empresa", "hidden lg:table-cell")}{plainHead("Descrição", "hidden md:table-cell")}{plainHead("Parcela")}{sortHead("Valor", "amount", payInstSort, setPayInstSort, "text-right")}{sortHead("Vencimento", "dueDate", payInstSort, setPayInstSort)}{plainHead("Pagamento")}{sortHead("Status", "status", payInstSort, setPayInstSort)}</tr></thead><tbody>
-                    {payInstPage.pageItems.map(row => <tr key={row.key} className="border-b border-border/50 hover:bg-muted/30"><td>{row.inst.status !== "paid" && <input type="checkbox" aria-label="Selecionar parcela" className="h-4 w-4 accent-primary" checked={selectedPayInst.includes(row.inst.id)} onChange={() => toggle(selectedPayInst, setSelectedPayInst, row.inst.id)} />}</td><td className="font-medium text-foreground">{row.pay.supplier}</td><td className="hidden text-muted-foreground lg:table-cell">{companyName(row.pay.companyId, row.pay.companyName)}</td><td className="hidden max-w-[260px] truncate text-xs uppercase text-muted-foreground md:table-cell">{row.pay.description}</td><td className="text-muted-foreground">{row.inst.installmentNumber}/{row.count}</td><td className="whitespace-nowrap text-right font-semibold text-foreground">{formatCurrency(row.inst.amount)}</td><td className="whitespace-nowrap text-muted-foreground">{fmtDate(row.inst.dueDate)}</td><td className="whitespace-nowrap text-muted-foreground">{fmtDate(row.inst.paidDate)}</td><td><StatusPill status={row.inst.status} /></td></tr>)}
+                    {payInstPage.pageItems.map(row => <tr key={row.key} className="border-b border-border/50 hover:bg-muted/30"><td>{row.inst.status !== "paid" && <input type="checkbox" aria-label="Selecionar parcela" className="h-4 w-4 accent-primary" checked={selectedPayInst.includes(row.inst.id)} onChange={() => toggle(selectedPayInst, setSelectedPayInst, row.inst.id)} />}</td><td className="font-medium text-foreground">{row.pay.supplier}</td><td className="hidden text-muted-foreground lg:table-cell">{companyName(row.pay.companyId, row.pay.companyName)}</td><td className="hidden max-w-[260px] truncate text-xs uppercase text-muted-foreground md:table-cell">{row.pay.description}</td><td className="text-muted-foreground">{row.inst.installmentNumber}/{row.count}</td><td className="whitespace-nowrap text-right font-semibold text-foreground">{<ValueCell base={row.inst.amount} j={row.inst.juros || 0} a={row.inst.acrescimo || 0} />}</td><td className="whitespace-nowrap text-muted-foreground">{fmtDate(row.inst.dueDate)}</td><td className="whitespace-nowrap text-muted-foreground">{fmtDate(row.inst.paidDate)}</td><td><StatusPill status={row.inst.status} /></td></tr>)}
                     {!loading && payableInstallmentRows.length === 0 && <EmptyRow text="Nenhuma parcela encontrada" span={9} />}
                   </tbody></table>
                   <TablePagination {...payInstPage} />

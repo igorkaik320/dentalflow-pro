@@ -128,6 +128,8 @@ export interface PayableInstallment {
   dueDate: string;
   paidDate?: string;
   paidAmount?: number;
+  juros?: number;
+  acrescimo?: number;
   status: 'open' | 'paid' | 'overdue';
   notes?: string;
   bankAccountId?: string;
