@@ -460,6 +460,7 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
   const filteredReceivables = useMemo(() => sortRows(recBase.filter(r => matchesStatusDate(recApplied, r.status, r.dueDate)), recSort, (r, k) => k === "created" ? r.createdAt || "" : k === "amount" ? r.amount : k === "client" ? r.patientName.toLowerCase() : k === "company" ? companyName(r.companyId, r.companyName).toLowerCase() : k === "procedure" ? r.procedure.toLowerCase() : k === "status" ? r.status : r.dueDate || ""), [recBase, recApplied, recSort]);
 
   const payBase = useMemo(() => payables.filter((p) => {
+    if (String(p.sourceNotes || "").startsWith("settlement_extra")) return false;
     const sup = p.supplierId ? supplierById.get(p.supplierId) : undefined;
     return matchesBase(payApplied, { companyId: p.companyId, companyName: companyName(p.companyId, p.companyName), entityId: p.supplierId, entityName: p.supplier, entityText: `${p.supplier} ${sup?.legalName || ""} ${sup?.document || ""} ${sup?.cnpj || ""}`, category: p.category });
   }), [payables, payApplied, supplierById, companyById]);
