@@ -16,6 +16,8 @@ import CommissionsPage from "./pages/CommissionsPage";
 import AccountStatementPage from "./pages/AccountStatementPage";
 import DrePage from "./pages/DrePage";
 import PaidPayablesPage from "./pages/PaidPayablesPage";
+import PagbankImportPage from "./pages/PagbankImportPage";
+import ReceivedAccountsPage from "./pages/ReceivedAccountsPage";
 import PatrimonyPage from "./pages/PatrimonyPage";
 import SecurityPage from "./pages/SecurityPage";
 import RegistrationsPage from "./pages/RegistrationsPage";
@@ -65,6 +67,8 @@ const App = () => (
               <Route path="/financeiro/extrato" element={<AccessGuard module="financial"><AccountStatementPage /></AccessGuard>} />
               <Route path="/financeiro/dre" element={<AccessGuard module="financial"><DrePage /></AccessGuard>} />
               <Route path="/financeiro/pagas" element={<AccessGuard module="financial"><PaidPayablesPage /></AccessGuard>} />
+              <Route path="/financeiro/importar-pagbank" element={<AccessGuard module="financial"><PagbankImportPage /></AccessGuard>} />
+              <Route path="/financeiro/recebidas" element={<AccessGuard module="financial"><ReceivedAccountsPage /></AccessGuard>} />
               <Route path="/auditoria" element={<AuditPage />} />
               <Route path="/patrimonio" element={<AccessGuard module="patrimony"><PatrimonyPage /></AccessGuard>} />
               <Route path="/seguranca" element={<AccessGuard module="security"><SecurityPage /></AccessGuard>} />

@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useClinic } from "@/contexts/ClinicContext";
 import { db } from "@/lib/clinicCloud";
 import { formatCurrency } from "@/lib/utils";
+import { receiptAmounts } from "@/lib/receipts";
 
 type Line = { category: string; amount: number };
 type Report = { income: Line[]; expense: Line[]; totalIncome: number; totalExpense: number; result: number };
@@ -36,7 +37,7 @@ export default function DrePage() {
 
   const consult = async () => {
     setLoading(true);
-    let rec = db.from("receivables").select("amount,category,company_id").eq("clinic_id", clinic.id).eq("status", "paid").gte("paid_date", start).lte("paid_date", end);
+    let rec = db.from("receivables").select("amount,interest_amount,addition_amount,machine_fee,fee_category,category,company_id").eq("clinic_id", clinic.id).eq("status", "paid").gte("paid_date", start).lte("paid_date", end);
     let pay = db.from("payable_installments").select("amount,juros_multa,acrescimo,payables!inner(category,company_id,source_notes)").eq("clinic_id", clinic.id).eq("status", "paid").gte("paid_date", start).lte("paid_date", end);
     let cash = db.from("cash_movements").select("amount,type,category,company_id").eq("clinic_id", clinic.id).gte("movement_date", start).lte("movement_date", end);
     if (companyId !== "all") { rec = rec.eq("company_id", companyId); pay = pay.eq("payables.company_id", companyId); cash = cash.eq("company_id", companyId); }
@@ -45,7 +46,13 @@ export default function DrePage() {
     if (r.error || p.error || c.error) return toast.error("Não foi possível gerar o DRE.");
     const inc = new Map<string, number>(), exp = new Map<string, number>();
     const add = (m: Map<string, number>, k: string | null, v: number) => { if (v) m.set(k || NONE, (m.get(k || NONE) || 0) + v); };
-    (r.data || []).forEach((x: any) => add(inc, x.category, Number(x.amount)));
+    (r.data || []).forEach((x: any) => {
+      const a = receiptAmounts(x);
+      add(inc, x.category, a.gross);
+      add(inc, "Juros", a.interest);
+      add(inc, "Acréscimos", a.addition);
+      add(exp, x.fee_category || "Taxa maquininha", a.fee);
+    });
     (p.data || []).forEach((x: any) => {
       // Lançamentos antigos gerados automaticamente de juros já estão na parcela de origem.
       if (String(x.payables?.source_notes || "").startsWith("settlement_extra")) return;

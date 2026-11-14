@@ -26,10 +26,14 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { toast } from "sonner";
+import { receiptAmounts } from "@/lib/receipts";
 
 type ReceivableRow = {
   id: string;
   amount: number;
+  interest_amount?: number;
+  addition_amount?: number;
+  machine_fee?: number;
   status: string;
   due_date: string;
   paid_date: string | null;
@@ -174,7 +178,7 @@ export default function DashboardPage() {
     if (!clinic.id) return;
     setLoading(true);
     const [receivableRes, payableRes, patientRes] = await Promise.all([
-      db.from("receivables").select("id, amount, status, due_date, paid_date, professional_name").eq("clinic_id", clinic.id),
+      db.from("receivables").select("id, amount, interest_amount, addition_amount, machine_fee, status, due_date, paid_date, professional_name").eq("clinic_id", clinic.id),
       db.from("payables").select("id, amount, status, due_date, paid_date, payable_installments(id, amount, paid_amount, juros_multa, acrescimo, status, due_date, paid_date)").eq("clinic_id", clinic.id),
       db.from("patients").select("id, created_at").eq("clinic_id", clinic.id),
     ]);
@@ -199,7 +203,7 @@ export default function DashboardPage() {
   const metrics = useMemo(() => {
     const periodReceivables = receivables.filter((item) => dateInPeriod(item.paid_date || item.due_date, periodStart, periodEnd));
     const monthlyRevenue = periodReceivables.reduce((sum, item) => sum + item.amount, 0);
-    const totalReceived = periodReceivables.filter((item) => item.status === "paid").reduce((sum, item) => sum + item.amount, 0);
+    const totalReceived = periodReceivables.filter((item) => item.status === "paid").reduce((sum, item) => sum + receiptAmounts(item).net, 0);
     const totalOpen = periodReceivables.filter((item) => item.status === "open" || item.status === "overdue").reduce((sum, item) => sum + item.amount, 0);
     const newPatients = patients.filter((patient) => dateInPeriod(patient.created_at.slice(0, 10), periodStart, periodEnd)).length;
     return { monthlyRevenue, totalReceived, totalOpen, newPatients };

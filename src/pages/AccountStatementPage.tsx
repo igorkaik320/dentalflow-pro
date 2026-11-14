@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useClinic } from "@/contexts/ClinicContext";
 import { db } from "@/lib/clinicCloud";
 import { formatCurrency } from "@/lib/utils";
+import { receiptAmounts } from "@/lib/receipts";
 
 type Account = { id: string; company_id: string | null; bank_name: string; agency: string; account_number: string; account_type: string; initial_date: string; initial_balance: number };
 type Entry = { id: string; type: "income" | "expense"; date: string; description: string; party: string; source: string; amount: number };
@@ -56,7 +57,7 @@ export default function AccountStatementPage() {
     if (manual.error || rec.error || pay.error) return toast.error("Não foi possível carregar o extrato.");
     setEntries([
       ...(manual.data || []).map((m: any) => ({ id: m.id, type: m.type, date: m.movement_date, description: m.description, party: m.supplier_name || "", source: m.category || "Lançamento de caixa", amount: Number(m.amount) })),
-      ...(rec.data || []).map((r: any) => ({ id: `r${r.id}`, type: "income" as const, date: r.paid_date, description: r.procedure_name, party: r.patient_name, source: "Contas a Receber", amount: Number(r.amount) })),
+      ...(rec.data || []).map((r: any) => ({ id: `r${r.id}`, type: "income" as const, date: r.paid_date, description: r.procedure_name, party: r.patient_name, source: "Contas a Receber", amount: receiptAmounts(r).net })),
       ...(pay.data || []).map((p: any) => ({ id: `p${p.id}`, type: "expense" as const, date: p.paid_date, description: `${p.payables.description} · ${p.installment_number}ª parcela`, party: p.payables.supplier, source: "Contas a Pagar", amount: Number(p.paid_amount ?? p.amount) })),
     ].filter(e => e.date && e.date >= account.initial_date).sort((a, b) => a.date.localeCompare(b.date)));
   };

@@ -1277,8 +1277,10 @@ export type Database = {
       }
       receivables: {
         Row: {
+          addition_amount: number
           amount: number
           bank_account_id: string | null
+          card_installments: number
           category: string | null
           clinic_id: string
           company_id: string | null
@@ -1287,8 +1289,17 @@ export type Database = {
           due_date: string
           execution_date: string | null
           executor_id: string | null
+          fee_category: string | null
           id: string
+          import_filename: string | null
+          import_nsu: string | null
+          import_provider: string | null
+          import_transaction_id: string | null
           installments: number
+          interest_amount: number
+          machine_fee: number
+          machine_identifier: string | null
+          net_amount: number | null
           paid_date: string | null
           patient_id: string | null
           patient_name: string
@@ -1305,8 +1316,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          addition_amount?: number
           amount?: number
           bank_account_id?: string | null
+          card_installments?: number
           category?: string | null
           clinic_id: string
           company_id?: string | null
@@ -1315,8 +1328,17 @@ export type Database = {
           due_date: string
           execution_date?: string | null
           executor_id?: string | null
+          fee_category?: string | null
           id?: string
+          import_filename?: string | null
+          import_nsu?: string | null
+          import_provider?: string | null
+          import_transaction_id?: string | null
           installments?: number
+          interest_amount?: number
+          machine_fee?: number
+          machine_identifier?: string | null
+          net_amount?: number | null
           paid_date?: string | null
           patient_id?: string | null
           patient_name: string
@@ -1333,8 +1355,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          addition_amount?: number
           amount?: number
           bank_account_id?: string | null
+          card_installments?: number
           category?: string | null
           clinic_id?: string
           company_id?: string | null
@@ -1343,8 +1367,17 @@ export type Database = {
           due_date?: string
           execution_date?: string | null
           executor_id?: string | null
+          fee_category?: string | null
           id?: string
+          import_filename?: string | null
+          import_nsu?: string | null
+          import_provider?: string | null
+          import_transaction_id?: string | null
           installments?: number
+          interest_amount?: number
+          machine_fee?: number
+          machine_identifier?: string | null
+          net_amount?: number | null
           paid_date?: string | null
           patient_id?: string | null
           patient_name?: string
@@ -1642,6 +1675,20 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
         }
         Returns: boolean
+      }
+      import_pagbank_receivables: {
+        Args: {
+          _account: string
+          _clinic: string
+          _company: string
+          _fee: string
+          _filename: string
+          _patient: string
+          _received: string
+          _revenue: string
+          _rows: Json
+        }
+        Returns: Json
       }
       is_clinic_member: { Args: { _clinic_id: string }; Returns: boolean }
       preview_commissions: {

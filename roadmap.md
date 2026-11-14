@@ -1,5 +1,10 @@
 # Ajustes solicitados
 
+## Recebimentos PagBank
+- [x] Importar PDF/CSV/Excel com prévia, empresa, conta identificada ou selecionada e cliente padrão, sem duplicar transações.
+- [x] Preservar bruto/taxa/líquido, integrar saldo líquido e DRE com Receita de Serviços e Taxa maquininha.
+- [x] Criar Contas Recebidas com filtros, tabela e PDF/Excel; testar importação e persistência.
+
 ## Identidade e login
 - [x] Criar ícone do ControlClinic e atualizar nome no navegador.
 - [x] Melhorar a apresentação do login e verificar computador e celular, preservando os acessos existentes.
