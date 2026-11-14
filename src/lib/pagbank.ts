@@ -4,6 +4,9 @@ import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
 GlobalWorkerOptions.workerSrc = workerUrl;
 export type PagbankRow = { transactionId: string; nsu: string; date: string; receivedDate: string; method: string; installments: number; machine: string; gross: number; interest: number; addition: number; fee: number; net: number };
+export function resolvePagbankReceipts(rows: PagbankRow[], useTransactionDate = true, receivedDate = ""): PagbankRow[] {
+  return rows.map(row => ({ ...row, receivedDate: row.receivedDate || (useTransactionDate ? row.date : receivedDate) }));
+}
 export const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
 export function money(value: unknown): number {
   if (typeof value === "number") return value;

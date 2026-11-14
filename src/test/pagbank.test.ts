@@ -1,7 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { identifyAccount, parsePdfLines, parseSheet, readPagbank, validateRows } from "@/lib/pagbank";
+import { identifyAccount, parsePdfLines, parseSheet, readPagbank, resolvePagbankReceipts, validateRows } from "@/lib/pagbank";
 import { receiptAmounts } from "@/lib/receipts";
 describe("Recebimentos PagBank", () => {
+  const receipt = parseSheet([["Código da Transação", "Data", "Bruto", "Taxa", "Líquido"], ["ABC", "14/11/2026", 100, 5, 95]]);
+  it("usa por padrão a data da transação e preserva o líquido integral", () => {
+    expect(resolvePagbankReceipts(receipt)).toEqual([{ ...receipt[0], receivedDate: "2026-11-14", net: 95 }]);
+  });
+  it("permite desativar a data automática e informar outra data", () => {
+    expect(resolvePagbankReceipts(receipt, false)[0].receivedDate).toBe("");
+    expect(resolvePagbankReceipts(receipt, false, "2026-11-16")[0].receivedDate).toBe("2026-11-16");
+  });
+  it("preserva a data de recebimento explícita do arquivo", () => {
+    expect(resolvePagbankReceipts([{ ...receipt[0], receivedDate: "2026-11-15" }])[0].receivedDate).toBe("2026-11-15");
+  });
   it("credita líquido e preserva bruto, juros, acréscimos e taxa", () => {
     expect(receiptAmounts({ amount: 100, interest_amount: 2, addition_amount: 3, machine_fee: 4 })).toEqual({ gross: 100, interest: 2, addition: 3, fee: 4, net: 101 });
   });

@@ -1,6 +1,6 @@
 # Architecture rules
 
-- PagBank imports use a local deterministic PDF/spreadsheet parser and an authenticated atomic database function with clinic-wide transaction deduplication; unknown receipt dates stay open and card installments are metadata, not duplicated titles.
+- PagBank imports use a local deterministic PDF/spreadsheet parser and an authenticated atomic database function with clinic-wide transaction deduplication; receipt dates are resolved before preview and submission, preserving explicit file dates and using the selected fallback; unresolved receipts stay open and card installments are metadata, not duplicated titles.
 - Receivables preserve gross and settlement components; ledger balances use net while DRE allocates gross revenue and machine fees separately without creating mirrored cash movements.
 
 - Clinical attachment UPDATE and DELETE policies bind both existing and resulting objects to the authenticated uploader via owner_id; this prevents cross-user replacement and deletion without changing read/upload behavior.
