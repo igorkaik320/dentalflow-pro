@@ -90,6 +90,7 @@ export interface Receivable {
   category?: string;
   amount: number;
   paymentMethod: string;
+  cardInstallments?: number;
   installments: number;
   status: 'open' | 'paid' | 'overdue';
   dueDate: string;

@@ -40,3 +40,17 @@ describe("Recebimentos PagBank", () => {
     expect((await readPagbank(file)).rows[0]).toMatchObject({ gross:100,fee:4,net:96 });
   });
 });
+import { standardizePaymentMethod as std, formatPaymentMethod as fmt } from "@/lib/pagbank";
+describe("forma de pagamento padronizada", () => {
+  it("crédito parcelado 12x vira Cartão de Crédito, Visa, 12 parcelas", () => {
+    expect(std("Crédito Visa Parcelado 12x")).toEqual({ method: "Cartão de Crédito", brand: "Visa", installments: 12 });
+  });
+  it("débito e pix nunca têm parcelas", () => {
+    expect(std("Débito Mastercard")).toEqual({ method: "Cartão de Débito", brand: "Mastercard", installments: 1 });
+    expect(std("Pix").installments).toBe(1);
+  });
+  it("exibe bandeira e parcelas", () => {
+    expect(fmt("Cartão de Crédito · Visa", 12)).toBe("Cartão de Crédito · Visa (12x)");
+    expect(fmt("Cartao Credito", 1)).toBe("Cartão de Crédito");
+  });
+});

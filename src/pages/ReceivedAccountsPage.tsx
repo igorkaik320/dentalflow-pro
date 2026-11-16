@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useClinic } from "@/contexts/ClinicContext";
 import { db } from "@/lib/clinicCloud";
 import { formatCurrency } from "@/lib/utils";
+import { formatPaymentMethod } from "@/lib/pagbank";
 import { receiptAmounts, type ReceiptAmounts } from "@/lib/receipts";
 
 type Named = {id:string;name:string};
@@ -36,7 +37,7 @@ export default function ReceivedAccountsPage() {
   };
   const totals=(rows||[]).reduce((t,r)=>{const a=receiptAmounts(r);return {gross:t.gross+a.gross,interest:t.interest+a.interest,addition:t.addition+a.addition,fee:t.fee+a.fee,net:t.net+a.net};},{gross:0,interest:0,addition:0,fee:0,net:0});
   const head=["Recebimento","Empresa","Cliente","Forma / parcelas","Classe financeira","Bruto","Juros","Acréscimos","Taxa","Líquido"];
-  const values=(r:Row)=>{const a=receiptAmounts(r);return [br(r.paid_date),r.company_name,r.patient_name,`${r.payment_method||""} · ${r.card_installments||1}x`,r.category,...[a.gross,a.interest,a.addition,a.fee,a.net]];};
+  const values=(r:Row)=>{const a=receiptAmounts(r);return [br(r.paid_date),r.company_name,r.patient_name,formatPaymentMethod(r.payment_method,r.card_installments||1),r.category,...[a.gross,a.interest,a.addition,a.fee,a.net]];};
   const body=(r:Row)=>values(r).map((v,i)=>i>=5?formatCurrency(Number(v)):String(v||""));
   const title=`${clinic.name} · ${companies.find(c=>c.id===applied.company)?.name||"Todas as empresas"} · ${br(applied.start)} a ${br(applied.end)}`;
   const totalValues=[totals.gross,totals.interest,totals.addition,totals.fee,totals.net];

@@ -7,6 +7,30 @@ export type PagbankRow = { transactionId: string; nsu: string; date: string; rec
 export function resolvePagbankReceipts(rows: PagbankRow[], useTransactionDate = true, receivedDate = ""): PagbankRow[] {
   return rows.map(row => ({ ...row, receivedDate: row.receivedDate || (useTransactionDate ? row.date : receivedDate) }));
 }
+export const PAYMENT_METHODS = ["Pix", "Cartão de Crédito", "Cartão de Débito", "Dinheiro", "Boleto"];
+/** Converte descrições como "Crédito Visa Parcelado 12x" em forma padrão, bandeira e parcelas. */
+export function standardizePaymentMethod(raw: string): { method: string; brand: string; installments: number } {
+  const n = String(raw ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const installments = Math.max(1, Math.min(18, Number(n.match(/(\d+)\s*x/)?.[1] || 1)));
+  const brand = ["Visa", "Mastercard", "Elo", "Amex", "Hipercard", "Hiper", "Cabal", "Diners"].find(b => n.includes(b.toLowerCase())) || "";
+  if (n.includes("pix")) return { method: "Pix", brand: "", installments: 1 };
+  if (n.includes("debito")) return { method: "Cartão de Débito", brand, installments: 1 };
+  if (n.includes("credito")) return { method: "Cartão de Crédito", brand, installments };
+  if (n.includes("dinheiro")) return { method: "Dinheiro", brand: "", installments: 1 };
+  if (n.includes("boleto")) return { method: "Boleto", brand: "", installments: 1 };
+  return { method: String(raw || "").trim() || "PagBank", brand, installments };
+}
+/** Texto exibido: "Cartão de Crédito · Visa (12x)". */
+export function formatPaymentMethod(stored: string, installments = 1) {
+  const [base, brand] = String(stored || "").split(" · ");
+  const s = standardizePaymentMethod(base);
+  const b = brand || s.brand;
+  return `${s.method}${b ? ` · ${b}` : ""}${s.method === "Cartão de Crédito" && installments > 1 ? ` (${installments}x)` : ""}`;
+}
+function standardRow(r: PagbankRow): PagbankRow {
+  const s = standardizePaymentMethod(r.method);
+  return { ...r, method: s.brand ? `${s.method} · ${s.brand}` : s.method, installments: s.method === "Cartão de Crédito" ? Math.max(s.installments, Number(r.installments) || 1) : 1 };
+}
 export const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
 export function money(value: unknown): number {
   if (typeof value === "number") return value;
@@ -37,7 +61,7 @@ export function validateRows(rows: PagbankRow[]) {
     if (old && JSON.stringify(old) !== JSON.stringify(r)) throw new Error("Código repetido com valores diferentes no arquivo.");
     unique.set(key, r);
   }
-  return [...unique.values()];
+  return [...unique.values()].map(standardRow);
 }
 export function parsePdfLines(lines: string[]) {
   const rows: PagbankRow[] = [];
