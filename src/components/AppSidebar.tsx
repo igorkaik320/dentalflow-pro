@@ -17,10 +17,9 @@ const groups: { key: string; label: string; icon: typeof User; items: MenuItem[]
   ] },
   { key: "financial", label: "Financeiro", icon: CircleDollarSign, items: [
     { title: "Contas a Receber", url: "/financeiro/receber", icon: ArrowUpCircle, module: "financial" },
-    { title: "Importação PagBank", url: "/financeiro/importar-pagbank", icon: Landmark, module: "financial" },
+    { title: "Importação", url: "/financeiro/importacao", icon: Landmark, module: "financial" },
     { title: "Contas a Pagar", url: "/financeiro/pagar", icon: ArrowDownCircle, module: "financial" },
     { title: "Controle de Caixa", url: "/financeiro/caixa", icon: Wallet, module: "financial" },
-    { title: "Comissões", url: "/financeiro/comissoes", icon: CircleDollarSign, module: "financial" },
   ] },
   { key: "registrations", label: "Cadastros", icon: ClipboardList, items: [
     { title: "Empresas", url: "/cadastros?tab=companies", icon: Building2, module: "registrations" },

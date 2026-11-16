@@ -12,7 +12,6 @@ import type { PermissionModule } from "@/lib/permissions";
 import DashboardPage from "./pages/DashboardPage";
 import AuditPage from "./pages/AuditPage";
 import FinancialPage from "./pages/FinancialPage";
-import CommissionsPage from "./pages/CommissionsPage";
 import AccountStatementPage from "./pages/AccountStatementPage";
 import DrePage from "./pages/DrePage";
 import PaidPayablesPage from "./pages/PaidPayablesPage";
@@ -63,11 +62,11 @@ const App = () => (
               <Route path="/financeiro/receber" element={<AccessGuard module="financial"><FinancialPage section="receivables" /></AccessGuard>} />
               <Route path="/financeiro/pagar" element={<AccessGuard module="financial"><FinancialPage section="payables" /></AccessGuard>} />
               <Route path="/financeiro/caixa" element={<AccessGuard module="financial"><FinancialPage section="cashflow" /></AccessGuard>} />
-              <Route path="/financeiro/comissoes" element={<AccessGuard module="financial"><CommissionsPage /></AccessGuard>} />
               <Route path="/financeiro/extrato" element={<AccessGuard module="financial"><AccountStatementPage /></AccessGuard>} />
               <Route path="/financeiro/dre" element={<AccessGuard module="financial"><DrePage /></AccessGuard>} />
               <Route path="/financeiro/pagas" element={<AccessGuard module="financial"><PaidPayablesPage /></AccessGuard>} />
-              <Route path="/financeiro/importar-pagbank" element={<AccessGuard module="financial"><PagbankImportPage /></AccessGuard>} />
+              <Route path="/financeiro/importacao" element={<AccessGuard module="financial"><PagbankImportPage /></AccessGuard>} />
+              <Route path="/financeiro/importar-pagbank" element={<Navigate to="/financeiro/importacao" replace />} />
               <Route path="/financeiro/recebidas" element={<AccessGuard module="financial"><ReceivedAccountsPage /></AccessGuard>} />
               <Route path="/auditoria" element={<AuditPage />} />
               <Route path="/patrimonio" element={<AccessGuard module="patrimony"><PatrimonyPage /></AccessGuard>} />

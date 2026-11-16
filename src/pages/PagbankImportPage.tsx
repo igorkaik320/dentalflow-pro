@@ -60,7 +60,7 @@ export default function PagbankImportPage() {
     finally {setBusy(false);}
   };
   const select=(label:string,value:string,onChange:(s:string)=>void,opts:Named[],disabled=false)=> <div className="space-y-1.5"><Label>{label}</Label><Select value={value} onValueChange={onChange} disabled={disabled}><SelectTrigger aria-label={label}><SelectValue placeholder="Selecione"/></SelectTrigger><SelectContent>{opts.map(o=><SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}</SelectContent></Select></div>;
-  return <ClinicLayout title="Importação PagBank" subtitle="Recebimentos de cartão e Pix">
+  return <ClinicLayout title="Importação" subtitle="Recebimentos de cartão, Pix e outros arquivos">
     <div className="mb-5 flex items-center gap-2"><Checkbox id="pagbank-use-transaction-date" checked={useTransactionDate} disabled={busy} onCheckedChange={value=>setUseTransactionDate(value===true)}/><Label htmlFor="pagbank-use-transaction-date">Considerar data da transação como data de recebimento</Label></div>
     <div className="grid gap-4 border-b border-border pb-6 md:grid-cols-3">
       {select("Empresa",company,v=>{setCompany(v);setAccount(identifyAccount(accounts.filter(a=>a.company_id===v),fileText));setResult(null);},companies)}
@@ -68,7 +68,7 @@ export default function PagbankImportPage() {
       {select("Cliente padrão",patient,setPatient,patients)}
       {select("Classe da receita",revenue,setRevenue,categories.filter(c=>c.type==="income"))}
       {select("Classe da taxa",fee,setFee,categories.filter(c=>c.type==="expense"))}
-      <div className="space-y-1.5"><Label htmlFor="pagbank-file">Arquivo PagBank</Label><Input ref={fileInput} id="pagbank-file" type="file" accept=".pdf,.csv,.xlsx,.xls" disabled={busy||!company||!can("financial","create")} onChange={e=>void loadFile(e.target.files?.[0])}/></div>
+      <div className="space-y-1.5"><Label htmlFor="pagbank-file">Arquivo de importação</Label><Input ref={fileInput} id="pagbank-file" type="file" accept=".pdf,.csv,.xlsx,.xls" disabled={busy||!company||!can("financial","create")} onChange={e=>void loadFile(e.target.files?.[0])}/></div>
     </div>
     {error&&<p role="alert" className="mt-4 text-sm text-destructive">{error}</p>}
     {busy&&<p role="status" className="py-6 text-sm text-muted-foreground">Processando...</p>}
