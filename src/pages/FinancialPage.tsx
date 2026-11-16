@@ -555,7 +555,7 @@ export default function FinancialPage({ section }: { section: "receivables" | "p
       procedure: rec.procedure,
       category: rec.category || "",
       amount: rec.amount,
-      paymentMethod: rec.paymentMethod && /^cart[aã]o (credito|debito)$/i.test(rec.paymentMethod) ? standardizePaymentMethod(rec.paymentMethod).method : rec.paymentMethod || "Pix",
+      paymentMethod: rec.paymentMethod ? standardizePaymentMethod(rec.paymentMethod).method : "Pix",
       cardInstallments: rec.cardInstallments || 1,
       installments: rec.installments,
       status: rec.status,
