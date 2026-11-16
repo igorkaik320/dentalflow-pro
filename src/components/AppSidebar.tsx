@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LayoutDashboard, CircleDollarSign, ClipboardList, Lock, Boxes, ShieldCheck, ChevronLeft, ChevronRight, User, Building2, Stethoscope, Tag, Landmark, ArrowUpCircle, ArrowDownCircle, Wallet, Users } from "lucide-react";
+import { LayoutDashboard, CircleDollarSign, ClipboardList, Lock, Boxes, ShieldCheck, ChevronLeft, ChevronRight, User, Building2, Stethoscope, Tag, Landmark, ArrowUpCircle, ArrowDownCircle, Wallet, Users, FileBarChart } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useClinic } from "@/contexts/ClinicContext";
@@ -17,14 +17,10 @@ const groups: { key: string; label: string; icon: typeof User; items: MenuItem[]
   ] },
   { key: "financial", label: "Financeiro", icon: CircleDollarSign, items: [
     { title: "Contas a Receber", url: "/financeiro/receber", icon: ArrowUpCircle, module: "financial" },
-    { title: "Contas Recebidas", url: "/financeiro/recebidas", icon: ArrowUpCircle, module: "financial" },
     { title: "Importação PagBank", url: "/financeiro/importar-pagbank", icon: Landmark, module: "financial" },
     { title: "Contas a Pagar", url: "/financeiro/pagar", icon: ArrowDownCircle, module: "financial" },
-    { title: "Contas Pagas", url: "/financeiro/pagas", icon: ArrowDownCircle, module: "financial" },
     { title: "Controle de Caixa", url: "/financeiro/caixa", icon: Wallet, module: "financial" },
     { title: "Comissões", url: "/financeiro/comissoes", icon: CircleDollarSign, module: "financial" },
-    { title: "Extrato de Conta", url: "/financeiro/extrato", icon: Landmark, module: "financial" },
-    { title: "DRE", url: "/financeiro/dre", icon: Landmark, module: "financial" },
   ] },
   { key: "registrations", label: "Cadastros", icon: ClipboardList, items: [
     { title: "Empresas", url: "/cadastros?tab=companies", icon: Building2, module: "registrations" },
@@ -40,6 +36,12 @@ const groups: { key: string; label: string; icon: typeof User; items: MenuItem[]
     { title: "Auditoria", url: "/auditoria", icon: ShieldCheck, module: "security", adminOnly: true },
   ] },
 ];
+const reportItems: MenuItem[] = [
+  { title: "Contas Recebidas", url: "/financeiro/recebidas", icon: ArrowUpCircle, module: "financial" },
+  { title: "Contas Pagas", url: "/financeiro/pagas", icon: ArrowDownCircle, module: "financial" },
+  { title: "Extrato de Conta", url: "/financeiro/extrato", icon: Landmark, module: "financial" },
+  { title: "DRE", url: "/financeiro/dre", icon: FileBarChart, module: "financial" },
+];
 const roleLabels = { admin: "Administrador", reception: "Recepção", dentist: "Especialista", finance: "Financeiro" };
 
 export function AppSidebar() {
@@ -48,6 +50,15 @@ export function AppSidebar() {
   const { clinic, can, memberRole } = useClinic();
   const currentKey = pathname.startsWith("/financeiro") ? "financial" : pathname === "/cadastros" ? "registrations" : ["/seguranca", "/auditoria"].includes(pathname) ? "security" : "management";
   const [activeGroup, setActiveGroup] = useState<string | null>(currentKey);
+  const [reportsOpen, setReportsOpen] = useState(false);
+  const reportsActive = reportItems.some(i => pathname === i.url);
+  const renderItem = (item: MenuItem, onNav?: () => void) => {
+    const active = item.url.includes("?") ? pathname + search === item.url : pathname === item.url;
+    const allowed = can(item.module, "view");
+    return <Button key={item.url} asChild variant="ghost" className={`h-9 w-full justify-start gap-2 rounded-md px-3 text-[13px] hover:bg-sidebar hover:text-sidebar-foreground ${active ? "bg-sidebar-primary text-sidebar-primary-foreground font-semibold" : "text-sidebar-foreground/90"} ${!allowed ? "opacity-50" : ""}`}>
+      <NavLink to={item.url} end activeClassName="" onClick={() => { setOpenMobile(false); onNav?.(); }}><item.icon className="h-4 w-4" /><span className="flex-1 truncate">{item.title}</span>{!allowed ? <Lock className="h-3 w-3" /> : active ? <ChevronRight className="h-3 w-3" /> : null}</NavLink>
+    </Button>;
+  };
   const group = groups.find(g => g.key === activeGroup);
   const panel = group && <div className="flex h-full min-h-0 flex-col bg-sidebar-accent text-sidebar-foreground">
     <div className="flex items-center justify-between border-b border-sidebar-border px-3 py-3">
@@ -55,13 +66,18 @@ export function AppSidebar() {
       <Button variant="ghost" size="icon" className="h-7 w-7 text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground" aria-label="Recolher menu" onClick={() => { setActiveGroup(null); setOpenMobile(false); }}><ChevronLeft /></Button>
     </div>
     <nav aria-label={group.label} className="flex-1 space-y-0.5 overflow-y-auto px-2 py-2">
-      {group.items.filter(item => !item.adminOnly || memberRole === "admin").map(item => {
-        const active = item.url.includes("?") ? pathname + search === item.url : pathname === item.url;
-        const allowed = can(item.module, "view");
-        return <Button key={item.url} asChild variant="ghost" className={`h-9 w-full justify-start gap-2 rounded-md px-3 text-[13px] hover:bg-sidebar hover:text-sidebar-foreground ${active ? "bg-sidebar-primary text-sidebar-primary-foreground font-semibold" : "text-sidebar-foreground/90"} ${!allowed ? "opacity-50" : ""}`}>
-          <NavLink to={item.url} end activeClassName="" onClick={() => setOpenMobile(false)}><item.icon className="h-4 w-4" /><span className="flex-1 truncate">{item.title}</span>{!allowed ? <Lock className="h-3 w-3" /> : active ? <ChevronRight className="h-3 w-3" /> : null}</NavLink>
-        </Button>;
-      })}
+      {group.items.filter(item => !item.adminOnly || memberRole === "admin").map(item => renderItem(item))}
+      {group.key === "financial" && <div className="relative" onMouseEnter={() => !isMobile && setReportsOpen(true)} onMouseLeave={() => !isMobile && setReportsOpen(false)}>
+        <Button variant="ghost" aria-expanded={reportsOpen} onClick={() => setReportsOpen(o => !o)} className={`h-9 w-full justify-start gap-2 rounded-md px-3 text-[13px] hover:bg-sidebar hover:text-sidebar-foreground ${reportsActive ? "bg-sidebar text-sidebar-foreground font-semibold" : "text-sidebar-foreground/90"}`}>
+          <FileBarChart className="h-4 w-4" /><span className="flex-1 truncate text-left">Relatórios</span><ChevronRight className={`h-3 w-3 transition-transform ${isMobile && reportsOpen ? "rotate-90" : ""}`} />
+        </Button>
+        {reportsOpen && (isMobile
+          ? <div className="ml-3 mt-0.5 space-y-0.5 border-l border-sidebar-border pl-2">{reportItems.map(i => renderItem(i))}</div>
+          : <div className="fixed z-50 pl-1" style={{ left: 260, marginTop: -36 }}><div className="w-[200px] space-y-0.5 rounded-md border border-sidebar-border bg-sidebar-accent p-2 shadow-lg">
+              <p className="px-3 pb-1 text-[10px] font-medium uppercase text-sidebar-muted">Relatórios</p>
+              {reportItems.map(i => renderItem(i, () => setReportsOpen(false)))}
+            </div></div>)}
+      </div>}
     </nav>
     <div className="border-t border-sidebar-border p-3"><div className="flex items-center gap-2"><User className="h-4 w-4 text-sidebar-muted" /><div className="min-w-0"><p className="truncate text-xs font-medium">{memberRole ? roleLabels[memberRole] : "Usuário"}</p><p className="truncate text-[10px] text-sidebar-muted">{clinic.name}</p></div></div></div>
   </div>;
