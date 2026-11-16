@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Upload, CheckCircle2 } from "lucide-react";
+import { Upload, CheckCircle2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ClinicLayout } from "@/components/ClinicLayout";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,27 @@ export default function PagbankImportPage() {
   const available = accounts.filter(a=>a.company_id===company);
   const [useTransactionDate, setUseTransactionDate] = useState(true);
   const receiptRows = resolvePagbankReceipts(rows, useTransactionDate, received);
+  type Batch = { id: string; filename: string; company: string; createdAt: string; count: number; gross: number; net: number };
+  const [batches,setBatches] = useState<Batch[]>([]), [deleteBatch,setDeleteBatch] = useState<Batch | null>(null);
+  const loadBatches = async () => {
+    if (!clinic.id) return;
+    const { data } = await db.from("receivables").select("import_batch_id,import_filename,company_name,created_at,amount,net_amount").eq("clinic_id", clinic.id).not("import_batch_id","is",null).order("created_at",{ascending:false}).limit(5000);
+    const map = new Map<string, Batch>();
+    for (const r of (data||[]) as {import_batch_id:string;import_filename:string|null;company_name:string|null;created_at:string;amount:number;net_amount:number|null}[]) {
+      const b = map.get(r.import_batch_id) || { id: r.import_batch_id, filename: r.import_filename || "Arquivo", company: r.company_name || "", createdAt: r.created_at, count: 0, gross: 0, net: 0 };
+      b.count++; b.gross += Number(r.amount); b.net += Number(r.net_amount ?? r.amount); map.set(b.id, b);
+    }
+    setBatches([...map.values()]);
+  };
+  useEffect(() => { void loadBatches(); }, [clinic.id]);
+  const removeBatch = async () => {
+    const b = deleteBatch; setDeleteBatch(null); if (!b) return;
+    setBusy(true);
+    const { data, error: e } = await db.rpc("delete_import_batch", { _clinic: clinic.id, _batch: b.id });
+    setBusy(false);
+    if (e) { toast.error(e.message || "Não foi possível excluir o lote."); return; }
+    toast.success(`${data} lançamentos do lote excluídos.`); setResult(null); void loadBatches();
+  };
   useEffect(()=> {
     if (!clinic.id) return;
     void Promise.all([
@@ -54,7 +75,7 @@ export default function PagbankImportPage() {
     try {
       const {data,error:e}=await db.rpc("import_pagbank_receivables",{_clinic:clinic.id,_company:company,_account:account,_patient:patient,_revenue:revenue,_fee:fee,_filename:filename,_received:null,_rows:receiptRows});
       if(e) throw e;
-      setResult(data);setRows([]);toast.success(`${data.imported} transações importadas; ${data.duplicates} repetidas ignoradas.`);
+      setResult(data);setRows([]);void loadBatches();toast.success(`${data.imported} transações importadas; ${data.duplicates} repetidas ignoradas.`);
       if (fileInput.current) fileInput.current.value = "";
     } catch(e) {setError(e instanceof Error?e.message:(e as {message?:string})?.message||"Não foi possível importar.");}
     finally {setBusy(false);}
@@ -80,6 +101,11 @@ export default function PagbankImportPage() {
       {!account&&<p className="mb-4 text-sm text-warning">Conta não identificada com segurança. Selecione a conta de destino.</p>}
       <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-muted text-left"><tr>{["Venda","Recebimento","Transação / NSU","Forma / parcelas","Máquina","Bruto","Juros","Acréscimos","Taxa","Líquido"].map(h=><th key={h} className="whitespace-nowrap p-3">{h}</th>)}</tr></thead><tbody>{receiptRows.map(r=><tr key={r.transactionId} className="border-b border-border"><td className="p-3 whitespace-nowrap">{r.date.split("-").reverse().join("/")}</td><td className="p-3 whitespace-nowrap">{r.receivedDate.split("-").reverse().join("/")||"Em aberto"}</td><td className="p-3 text-xs">{r.transactionId}<br/>{r.nsu}</td><td className="p-3">{formatPaymentMethod(r.method, r.installments)}</td><td className="p-3">{r.machine||"—"}</td>{[r.gross,r.interest,r.addition,r.fee,r.net].map((v,i)=><td key={i} className="p-3 whitespace-nowrap text-right">{formatCurrency(v)}</td>)}</tr>)}</tbody></table></div>
     </>}
+    <section className="mt-10"><h2 className="mb-3 text-lg font-semibold">Lotes importados</h2>
+      {!batches.length ? <p className="text-sm text-muted-foreground">Nenhum lote importado.</p> :
+      <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-muted text-left"><tr>{["Importado em","Arquivo","Empresa","Lançamentos","Bruto","Líquido",""].map(h=><th key={h} className="whitespace-nowrap p-3">{h}</th>)}</tr></thead><tbody>{batches.map(b=><tr key={b.id} className="border-b border-border"><td className="p-3 whitespace-nowrap">{new Date(b.createdAt).toLocaleString("pt-BR")}</td><td className="p-3">{b.filename}</td><td className="p-3">{b.company}</td><td className="p-3 text-right">{b.count}</td><td className="p-3 text-right whitespace-nowrap">{formatCurrency(b.gross)}</td><td className="p-3 text-right whitespace-nowrap">{formatCurrency(b.net)}</td><td className="p-3 text-right"><Button size="sm" variant="outline" disabled={busy||!can("financial","delete")} onClick={()=>setDeleteBatch(b)}><Trash2 className="mr-1 h-4 w-4"/>Excluir lote</Button></td></tr>)}</tbody></table></div>}
+    </section>
+    <ConfirmDialog open={!!deleteBatch} onOpenChange={o=>!o&&setDeleteBatch(null)} title="Excluir lote importado" description={`Todos os ${deleteBatch?.count ?? 0} lançamentos do arquivo ${deleteBatch?.filename ?? ""} serão excluídos do Contas a Receber. Esta ação não pode ser desfeita.`} onConfirm={()=>void removeBatch()}/>
     <ConfirmDialog open={confirm} onOpenChange={setConfirm} title="Confirmar importação" description={`${rows.length} transações para ${companies.find(c=>c.id===company)?.name || ""}, conta ${available.find(a=>a.id===account)?.bank_name || ""}. Somente recebimentos com data confirmada serão baixados. Transações repetidas serão ignoradas.`} onConfirm={()=>void importRows()}/>
   </ClinicLayout>;
 }

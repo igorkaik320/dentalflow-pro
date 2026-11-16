@@ -1291,6 +1291,7 @@ export type Database = {
           executor_id: string | null
           fee_category: string | null
           id: string
+          import_batch_id: string | null
           import_filename: string | null
           import_nsu: string | null
           import_provider: string | null
@@ -1330,6 +1331,7 @@ export type Database = {
           executor_id?: string | null
           fee_category?: string | null
           id?: string
+          import_batch_id?: string | null
           import_filename?: string | null
           import_nsu?: string | null
           import_provider?: string | null
@@ -1369,6 +1371,7 @@ export type Database = {
           executor_id?: string | null
           fee_category?: string | null
           id?: string
+          import_batch_id?: string | null
           import_filename?: string | null
           import_nsu?: string | null
           import_provider?: string | null
@@ -1657,6 +1660,10 @@ export type Database = {
       commission_access: {
         Args: { _action: string; _clinic: string }
         Returns: boolean
+      }
+      delete_import_batch: {
+        Args: { _batch: string; _clinic: string }
+        Returns: number
       }
       generate_commission_payables: {
         Args: {
