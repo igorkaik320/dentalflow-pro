@@ -150,27 +150,20 @@ async function seedClinicDefaults(clinicId: string) {
 }
 
 export async function ensureClinicForUser(user: { id: string; email?: string | null; user_metadata?: Record<string, any> }) {
-  await db.from("profiles").upsert({
+  void db.from("profiles").upsert({
     user_id: user.id,
     email: user.email || null,
     full_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email || "Usuário",
-  }, { onConflict: "user_id" });
+  }, { onConflict: "user_id" }).then(() => undefined);
 
-  const { data: lockedMembership, error: lockedMemberError } = await db
-    .from("clinic_members")
-    .select("clinic_id, active")
-    .eq("clinic_id", lockedClinicId)
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const [{ data: lockedMembership, error: lockedMemberError }, { data: lockedClinic, error: lockedClinicError }] = await Promise.all([
+    db.from("clinic_members").select("clinic_id, active").eq("clinic_id", lockedClinicId).eq("user_id", user.id).maybeSingle(),
+    db.from("clinics").select("id, name, cnpj, phone, email, address, logo_url").eq("id", lockedClinicId).maybeSingle(),
+  ]);
   if (lockedMemberError) throw lockedMemberError;
   if (!lockedMembership) throw new Error("Solicitacao de acesso nao encontrada. Fale com um administrador.");
   if (!lockedMembership.active) throw new Error("Cadastro aguardando aprovacao de um administrador.");
 
-  const { data: lockedClinic, error: lockedClinicError } = await db
-    .from("clinics")
-    .select("id, name, cnpj, phone, email, address, logo_url")
-    .eq("id", lockedClinicId)
-    .maybeSingle();
   if (lockedClinicError) throw lockedClinicError;
   if (!lockedClinic) throw new Error("Usuario sem acesso a clinica Virtuosa.");
   return lockedClinic as CloudClinic;

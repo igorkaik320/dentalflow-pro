@@ -11,7 +11,7 @@ import {
   DollarSign,
   TrendingUp,
   Clock,
-  Users,
+  Wallet,
   Calendar,
   ArrowUpRight,
   ArrowDownRight,
@@ -24,6 +24,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Legend,
 } from "recharts";
 import { toast } from "sonner";
 import { receiptAmounts } from "@/lib/receipts";
@@ -206,7 +207,8 @@ export default function DashboardPage() {
     const totalReceived = periodReceivables.filter((item) => item.status === "paid").reduce((sum, item) => sum + receiptAmounts(item).net, 0);
     const totalOpen = periodReceivables.filter((item) => item.status === "open" || item.status === "overdue").reduce((sum, item) => sum + item.amount, 0);
     const newPatients = patients.filter((patient) => dateInPeriod(patient.created_at.slice(0, 10), periodStart, periodEnd)).length;
-    return { monthlyRevenue, totalReceived, totalOpen, newPatients };
+    const machineFees = periodReceivables.filter((item) => item.status === "paid").reduce((sum, item) => sum + Number(item.machine_fee || 0), 0);
+    return { monthlyRevenue, totalReceived, totalOpen, newPatients, machineFees };
   }, [receivables, patients, periodStart, periodEnd]);
 
   const monthlyData = useMemo(() => {
@@ -226,15 +228,20 @@ export default function DashboardPage() {
     const expenseRows = payableExpenseRows(payables).filter((item) => dateInPeriod(item.paid_date || item.due_date, periodStart, periodEnd));
     const paidExpenses = expenseRows.filter((item) => item.status === "paid").reduce((sum, item) => sum + item.amount, 0);
     const openExpenses = expenseRows.filter((item) => item.status !== "paid").reduce((sum, item) => sum + item.amount, 0);
-    const balance = metrics.totalReceived - paidExpenses;
-    return { paidExpenses, openExpenses, balance };
+    const t = today();
+    const overdueExpenses = expenseRows.filter((item) => item.status !== "paid" && item.due_date < t).reduce((sum, item) => sum + item.amount, 0);
+    const upcoming = payableExpenseRows(payables)
+      .filter((item) => item.status !== "paid" && item.due_date >= t)
+      .sort((a, b) => a.due_date.localeCompare(b.due_date))
+      .slice(0, 5);
+    return { paidExpenses, openExpenses, overdueExpenses, upcoming };
   }, [payables, metrics.totalReceived, periodStart, periodEnd]);
 
   const stats = [
     { label: "Faturamento no periodo", value: formatCurrency(metrics.monthlyRevenue), icon: DollarSign, trend: "Atual", up: true },
     { label: "Total Recebido", value: formatCurrency(metrics.totalReceived), icon: TrendingUp, trend: "Pago", up: true },
     { label: "Em Aberto", value: formatCurrency(metrics.totalOpen), icon: Clock, trend: "Pendente", up: false },
-    { label: "Clientes Novos", value: metrics.newPatients.toString(), icon: Users, trend: "Mês", up: true },
+    { label: "Despesas pagas", value: formatCurrency(financialSummary.paidExpenses), icon: Wallet, trend: "Saídas", up: false },
   ];
 
   return (
@@ -290,6 +297,7 @@ export default function DashboardPage() {
                 <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
                 <YAxis tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `${Number(v) / 1000}k`} />
                 <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
                 <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="Receita" />
                 <Bar dataKey="expenses" fill="hsl(var(--muted))" radius={[4, 4, 0, 0]} name="Despesas" />
               </BarChart>
@@ -298,19 +306,30 @@ export default function DashboardPage() {
 
           <Card className="p-5">
             <h3 className="text-sm font-semibold text-foreground mb-4">Resumo Financeiro</h3>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Despesas pagas</span>
-                <span className="text-sm font-semibold text-foreground">{formatCurrency(financialSummary.paidExpenses)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Despesas em aberto</span>
-                <span className="text-sm font-semibold text-foreground">{formatCurrency(financialSummary.openExpenses)}</span>
-              </div>
-              <div className="pt-4 border-t border-border flex items-center justify-between">
-                <span className="text-sm font-medium text-foreground">Saldo recebido</span>
-                <span className="text-sm font-bold text-primary">{formatCurrency(financialSummary.balance)}</span>
-              </div>
+            <div className="space-y-3">
+              {[
+                ["Recebido líquido", metrics.totalReceived, "text-success"],
+                ["Taxas de maquininha", metrics.machineFees, "text-muted-foreground"],
+                ["A receber em aberto", metrics.totalOpen, "text-foreground"],
+                ["Despesas em aberto", financialSummary.openExpenses, "text-foreground"],
+                ["Despesas vencidas", financialSummary.overdueExpenses, "text-destructive"],
+              ].map(([label, value, color]) => (
+                <div key={label as string} className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">{label}</span>
+                  <span className={`text-sm font-semibold ${color}`}>{loading ? "..." : formatCurrency(value as number)}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-5 pt-4 border-t border-border">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Próximos vencimentos</p>
+              {financialSummary.upcoming.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhuma conta a vencer.</p>
+              ) : financialSummary.upcoming.map((item, index) => (
+                <div key={index} className="flex items-center justify-between py-1 text-sm">
+                  <span className="text-muted-foreground">{new Date(`${item.due_date}T12:00:00`).toLocaleDateString("pt-BR")}</span>
+                  <span className="font-medium text-foreground">{formatCurrency(item.amount)}</span>
+                </div>
+              ))}
             </div>
           </Card>
         </div>
