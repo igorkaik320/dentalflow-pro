@@ -13,9 +13,11 @@ import {
   Clock,
   Wallet,
   Calendar,
+  AlertCircle,
   ArrowUpRight,
   ArrowDownRight,
 } from "lucide-react";
+import { clinicToday } from "@/lib/payableDueNotice";
 import {
   BarChart,
   Bar,
@@ -208,7 +210,11 @@ export default function DashboardPage() {
     const totalOpen = periodReceivables.filter((item) => item.status === "open" || item.status === "overdue").reduce((sum, item) => sum + item.amount, 0);
     const newPatients = patients.filter((patient) => dateInPeriod(patient.created_at.slice(0, 10), periodStart, periodEnd)).length;
     const machineFees = periodReceivables.filter((item) => item.status === "paid").reduce((sum, item) => sum + Number(item.machine_fee || 0), 0);
-    return { monthlyRevenue, totalReceived, totalOpen, newPatients, machineFees };
+    // Atrasados: sempre considera todos os títulos, independente do período filtrado.
+    const t = clinicToday();
+    const overdueRows = receivables.filter((item) => (item.status === "open" || item.status === "overdue") && item.due_date < t);
+    const overdueAmount = overdueRows.reduce((sum, item) => sum + item.amount, 0);
+    return { monthlyRevenue, totalReceived, totalOpen, newPatients, machineFees, overdueAmount, overdueCount: overdueRows.length };
   }, [receivables, patients, periodStart, periodEnd]);
 
   const monthlyData = useMemo(() => {
@@ -240,7 +246,8 @@ export default function DashboardPage() {
   const stats = [
     { label: "Faturamento no periodo", value: formatCurrency(metrics.monthlyRevenue), icon: DollarSign, trend: "Atual", up: true },
     { label: "Total Recebido", value: formatCurrency(metrics.totalReceived), icon: TrendingUp, trend: "Pago", up: true },
-    { label: "Em Aberto", value: formatCurrency(metrics.totalOpen), icon: Clock, trend: "Pendente", up: false },
+    { label: "A receber (em aberto)", value: formatCurrency(metrics.totalOpen), icon: Clock, trend: "Pendente", up: false },
+    { label: "Atrasados", value: formatCurrency(metrics.overdueAmount), icon: AlertCircle, trend: `${metrics.overdueCount} titulo(s)`, up: false, danger: metrics.overdueAmount > 0 },
     { label: "Despesas pagas", value: formatCurrency(financialSummary.paidExpenses), icon: Wallet, trend: "Saídas", up: false },
   ];
 
@@ -267,16 +274,16 @@ export default function DashboardPage() {
           </div>
         </Card>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           {stats.map((stat) => (
-            <Card key={stat.label} className="stat-card">
+            <Card key={stat.label} className={`stat-card ${stat.danger ? "border-destructive/40" : ""}`}>
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">{stat.label}</p>
-                  <p className="text-2xl font-bold text-foreground mt-1">{loading ? "..." : stat.value}</p>
+                  <p className={`text-2xl font-bold mt-1 ${stat.danger ? "text-destructive" : "text-foreground"}`}>{loading ? "..." : stat.value}</p>
                 </div>
-                <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <stat.icon className="h-4 w-4 text-primary" />
+                <div className={`h-9 w-9 rounded-lg flex items-center justify-center ${stat.danger ? "bg-destructive/10" : "bg-primary/10"}`}>
+                  <stat.icon className={`h-4 w-4 ${stat.danger ? "text-destructive" : "text-primary"}`} />
                 </div>
               </div>
               <div className="flex items-center gap-1 mt-3">
